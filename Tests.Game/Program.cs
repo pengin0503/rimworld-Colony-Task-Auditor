@@ -7,6 +7,14 @@ class Program
 {
     static void Main()
     {
+        // Report parser failures directly before the game logger can mask their cause.
+        try { _=ParseHelper.FromString<string>("fixture"); }
+        catch(Exception e) { Console.Error.WriteLine("Game parser preflight failed: "+e); throw; }
+        // This record-only fixture has no engine startup. Supply the real game's default
+        // PrefsData so DeepProfiler can read LogVerbose during load finalization.
+        // This does not initialize a playable game or validate a whole-map save.
+        typeof(Prefs).GetField("data",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic)
+            .SetValue(null,new PrefsData());
         // Private integration test. Uses the real game's Scribe, not a mock serializer.
         // This is a record round trip, not a playable-map save/load acceptance test.
         string path=Path.Combine(Path.GetTempPath(),"cta-"+Guid.NewGuid()+".xml");
@@ -25,7 +33,10 @@ class Program
             Scribe.loader.FinalizeLoading();
             if(record==null || record.Id!="fixture" || record.Clock.EligibleTicks!=90 || !record.Clock.Notified)
                 throw new Exception("Scribe record round trip failed");
-            Console.WriteLine("PASS real-game Scribe audit record round trip");
+            record.Clock.Observe(110,5,false,true,100);
+            if(!record.Clock.IsStalled(100)||record.Clock.FirstSeen!=10||record.Clock.LastProgress!=10)
+                throw new Exception("Scribe progress continuity failed");
+            Console.WriteLine("PASS real-game Scribe audit record round trip and progress continuity");
         }
         finally {if(File.Exists(path))File.Delete(path);}
     }

@@ -29,9 +29,9 @@
 
 ### Runtime attempt / 実行検証の試行
 
-`Tests.Game` attempts a real Scribe primitive-record round trip. Execution **fails before successful load completion** under the stock .NET CLR: the game logging dependency requests `Microsoft.Extensions.ObjectPool, Version=11.0.0.0`, while the game relies on WaylithClr lax assembly binding. The R2-supplied ObjectPool assembly does not resolve this with the stock CLR. No fake serializer or version redirect was used to turn this into a pass. Run the fixture in the qualified game-runtime environment before accepting save/load.
+Initial direct Scribe attempts failed. A game parser preflight exposed a missing `com.rlabrecque.steamworks.net` dependency; the game logger had masked it with an ObjectPool version error. After acquiring the matching private R2 dependency and supplying real default `PrefsData` for the record-only fixture, the Scribe record round trip and progress continuity pass. No fake serializer or assembly-version redirect was used. This is not full engine initialization or a whole-map save/load test.
 
-The existing test host's `bounded-tick.v1` accepts only its registered fixture observations. It does not currently provide Task Auditor job-progress/save-load acceptance. This session did not initialize its full private WaylithClr runtime, generate a map, execute finite game ticks or repeat A-level loading for the new DLL. Earlier A evidence above is historical only.
+The existing test host's `bounded-tick.v1` accepts only its registered fixture observations. It does not currently provide Task Auditor job-progress/save-load acceptance. At the initial local checkpoint, no host map/tick test had run. The final host evidence below supersedes that initial scope; the original A evidence at the top remains historical.
 
 ### Remaining release blockers / 正式版までの残作業
 
@@ -41,3 +41,21 @@ The existing test host's `bounded-tick.v1` accepts only its registered fixture o
 - Full-map serialization/removal, real job execution, UI layout, 200+/270+ MOD compatibility, large designation/farm scan timing and TPS overhead are unverified. No v1.0 release; Issue #1 stays open.
 
 日本語: 今回は進捗追跡・原因の確信度表示・種類別フィルターと回帰テストを追加しました。実物DLL参照のビルドと12項目のモデルテストは合格しました。保存処理の実行試験はCLR依存の不一致で失敗しており、マップの保存・読み込み、通常プレイ、有限Tick、MOD互換性、実スキャン時間・TPSは未確認です。材料・予約の完全診断や全作業種別の進捗把握も未完了のため、正式版にはしません。
+
+## Final private-runtime evidence (2026-11-01)
+
+- [Pinned private-host run](https://github.com/pengin0503/RimWorld-for-mod-test/actions/runs/41278778403) completed successfully. Only safe rebuilt summaries were printed; raw game files, saves and private logs were not published.
+- Fresh qualified **A=passed**, exit 0, no reason codes, for the source revision in [runtime-smoke.json](evidence/2026-11-01-runtime-smoke.json).
+- Generated-map finite-tick smoke: actual game tick and independent registered `fixture.counter` both equal **0, 60, 600, 12,000**. **D stage=completed**, but **overall=incomplete** with `experimental`, `dNotQualified`, `mapNotQualified`. The host CI success means these limited expectations were met; it is not promotion to qualified D or game feature acceptance. No new errors/warnings were reported by that comparison.
+- The registered observer measures its fixture counter, not our work diagnosis, feed accuracy, apparel effects or scan timing. The fixture map and Core/Japanese conditions do not represent a populated or 270+ MOD colony. No TPS claim is made.
+- Local model benchmark conditions: Linux x86_64, AMD EPYC 9V74, 9 logical CPUs exposed, SDK 10.0.111 / .NET 10.0.11, Release, single-run measurements with game API/GUI/pathfinding excluded. No before/after optimization claim.
+
+### Primitive Scribe integration
+
+`dotnet run --project Tests.Game/Tests.Game.csproj -c Release -p:RimWorldManaged=<matching-private-game-dir> -p:GameExtraManaged=<matching-private-extra-dir>` exercises the real game Scribe under stock .NET for isolated primitive data. The extra directory contains only matching R2 ObjectPool and Steamworks managed dependencies. The fixture supplies the game's real default `PrefsData` because normal engine startup is absent. These files are test inputs only and are never committed or packaged.
+
+**PASS:** audit record fields, notification state, eligible ticks and post-load progress continuity. This does not exercise a whole serialized map or completed jobs. Static index comparison: 119 member signatures and 69 types matched; 151 external-framework references remain outside the indexed assembly set, with no indexed game-reference mismatch.
+
+**Still blocked for v1.0:** normal populated gameplay, full-map save/load and installation/removal, actual task/feeding/wear acceptance, real outfit-manager/race/DLC interactions, 270+ MOD compatibility and actual large-map scan/TPS measurement. Earlier implementation gaps and scenario limitations remain; Issue #1 is open and no v1.0 release is created.
+
+日本語: 最新コミットで実ゲーム読み込みAは合格し、実ゲームTickと独立fixtureが12,000 Tickまで一致しました。ただしD・マップ生成は未適格化で総合判定はincompleteです。実物Scribeによる限定的なデータ往復も合格しましたが、通常プレイやマップ全体の保存・読み込み、実際の業務動作、270以上のMOD環境・実TPSの検証にはなりません。Issue #1と正式版の保留を維持します。

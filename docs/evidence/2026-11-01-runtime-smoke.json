@@ -1,0 +1,53 @@
+{
+  "gameBuild": "1.7.4985 rev1269",
+  "sourceCommit": "68a86152a198b9869d4fa1272c35e8afe7a620f8",
+  "hostCommit": "2892a00cde1513b4edc025f92d098035d16810d4",
+  "runURL": "https://github.com/pengin0503/RimWorld-for-mod-test/actions/runs/41278778403",
+  "A": {
+    "mod": "ColonyTaskAuditor",
+    "status": "passed",
+    "reasonCodes": [],
+    "exitCode": 0
+  },
+  "D": {
+    "mod": "ColonyTaskAuditor",
+    "Dstage": "completed",
+    "overall": "incomplete",
+    "reasonCodes": [
+      "experimental",
+      "dNotQualified",
+      "mapNotQualified"
+    ],
+    "registeredFixtureTicksOnly": [
+      {
+        "tick": 0,
+        "gameTick": 0,
+        "fixtureCounter": 0
+      },
+      {
+        "tick": 60,
+        "gameTick": 60,
+        "fixtureCounter": 60
+      },
+      {
+        "tick": 600,
+        "gameTick": 600,
+        "fixtureCounter": 600
+      },
+      {
+        "tick": 12000,
+        "gameTick": 12000,
+        "fixtureCounter": 12000
+      }
+    ],
+    "ok": true
+  },
+  "scope": "experimental bounded-tick smoke, no task/feeding/wear/save-load acceptance",
+  "notVerified": [
+    "normal gameplay",
+    "task/feeding/wear correctness",
+    "full-map save-load and removal",
+    "270+ MOD compatibility",
+    "actual scan/TPS overhead"
+  ]
+}

@@ -10,7 +10,7 @@ assert metadata.tag == "ModMetaData"
 assert metadata.findtext("packageId") == "pengin0503.colonytaskauditor"
 assert metadata.findtext("supportedVersions/li") == "1.7"
 
-proj = ET.parse(root / "Source/ColonyTaskAuditor.csproj").getroot()
+proj = ET.parse(root / "Source/TaskAuditor.csproj").getroot()
 assert proj.findtext(".//TargetFramework") == "net10.0"
 assert any(p.attrib.get("Include") == "Krafs.Rimworld.Ref" for p in proj.findall(".//PackageReference"))
 source = (root / "Source/ColonyTaskAuditor.cs").read_text(encoding="utf-8")

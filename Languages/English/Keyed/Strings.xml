@@ -39,4 +39,8 @@
   <CTA_MaterialMissing>Undelivered construction material exceeds available spawned stocks; inventory/delivery contents unverified</CTA_MaterialMissing>
   <CTA_MaterialDelivery>Construction materials are not yet delivered; stock access and hauling need inspection</CTA_MaterialDelivery>
   <CTA_Reserved>Target is reserved and available workers cannot reserve it; inspect reservation owner</CTA_Reserved>
+  <CTA_Skill>No enabled worker meets recipe or construction skill requirements</CTA_Skill>
+  <CTA_BillMaterials>No permitted spawned item matches a recipe ingredient; inventories and delivery are unverified</CTA_BillMaterials>
+  <CTA_ProgressHookUnavailable>Completion observer unavailable: bill completion between samples is unverified. Check Harmony.</CTA_ProgressHookUnavailable>
+  <CTA_Timing>First observed tick {0}; first sampled work {1}; last progress {2}</CTA_Timing>
 </LanguageData>

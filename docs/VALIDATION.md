@@ -65,3 +65,11 @@ The existing test host's `bounded-tick.v1` accepts only its registered fixture o
 Adds likely frame-material delivery/stock-shortage evidence and reservation evidence. A reservation alone is never classified as a blocker: available workers must also fail reservation. Spawned non-forbidden material counts are cached by Def for the scan; inventory and in-transit contents remain unverified and are explicitly labeled. These diagnostics do not alter orders or reservations.
 
 17 pure assertions pass (five added), exact private 1.7.4985 DLL Release build has zero warnings/errors, real Scribe record/continuity regression passes, and bilingual key checks pass. The earlier A/12,000-tick result applies to the earlier production revision, not automatically this follow-up. New populated-game acceptance is pending. Other implementation and release blockers above remain open.
+
+## Implementation continuation: event and active-work tracking
+
+Completed bill iterations are observed by one Harmony postfix on Bill_Production.Notify_IterationCompleted, covering unlimited bills that complete between scans. Harmony identity was verified in the private index: brrainz.harmony / 2009463077. No game or Harmony binary is committed. Actual job workLeft, frame work, unfinished work and designation target damage are sampled for active workers every 250 ticks; this is not an all-object scan. Completion resets the persisted last-progress clock without requiring a repeat-count change.
+
+Added recipe/construction skill diagnosis, work-type resolution from WorkGiver definitions, bounded recipe-ingredient absence checks, blueprint materials, initial map-load refresh, per-category cleanup during partial scans, full virtualized list and explicit timing display. Pre-installation creation time remains unknowable; the UI labels first observation correctly. Modded completions that bypass the vanilla method and special job implementations can remain unknown.
+
+Build/static checks and existing focused regression checks pass locally. New populated gameplay, Harmony execution, full-map save/removal and 270+ MOD performance remain unverified. Prior A/tick evidence is historical for previous production bytes. Test effort is limited to changed behavior and existing checks per the user's latest priority; no new broad test infrastructure is added.

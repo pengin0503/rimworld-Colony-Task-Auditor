@@ -5,7 +5,7 @@ namespace Pengin.ColonyTaskAuditor
     // Primitive state only: serialized by AuditRecord, tested without loading the game.
     public sealed class ProgressClock
     {
-        public bool Initialized, WasEligible, Notified;
+        public bool Initialized, WasEligible, Notified,HasProgress;
         public int FirstSeen, LastSeen, LastProgress, Started = -1, EligibleTicks;
         public float Progress;
 
@@ -19,7 +19,7 @@ namespace Pengin.ColonyTaskAuditor
                 Started = -1;
                 EligibleTicks = 0;
                 Progress = progress;
-                Notified = false;
+                Notified = false;HasProgress=false;
                 WasEligible = false;
             }
             int elapsed = now - LastSeen;
@@ -33,13 +33,18 @@ namespace Pengin.ColonyTaskAuditor
             }
             else if (WasEligible && eligible)
                 EligibleTicks = (int)Math.Min(int.MaxValue, (long)EligibleTicks + elapsed);
-            if (changed) LastProgress = now;
+            if (changed) {LastProgress = now;HasProgress=true;}
             if (working && Started < 0) Started = now;
             Progress = progress;
             LastSeen = now;
             WasEligible = eligible && !working;
         }
 
+        public void MarkProgress(int now)
+        {
+            if(now<0)return;
+            LastProgress=now;HasProgress=true;EligibleTicks=0;WasEligible=false;Notified=false;
+        }
         public bool IsStalled(int threshold)
         {
             return Initialized && WasEligible && EligibleTicks >= Math.Max(1, threshold);

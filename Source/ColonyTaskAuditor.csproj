@@ -4,17 +4,25 @@
     <LangVersion>7.3</LangVersion>
     <Nullable>disable</Nullable>
     <AssemblyName>ColonyTaskAuditor</AssemblyName>
+    <RootNamespace>Pengin.ColonyTaskAuditor</RootNamespace>
     <OutputPath>../1.7/Assemblies/</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GenerateDependencyFile>false</GenerateDependencyFile>
   </PropertyGroup>
-  <ItemGroup>
+  <!-- CI: public reference-only assemblies; no proprietary game files. -->
+  <ItemGroup Condition="'$(RimWorldManaged)' == ''">
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.7.4985-unstable" PrivateAssets="all" />
+  </ItemGroup>
+  <!-- Optional local build: exact installed game assemblies. -->
+  <ItemGroup Condition="'$(RimWorldManaged)' != ''">
     <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldManaged)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Waylith"><HintPath>$(RimWorldManaged)/Waylith.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityStubs"><HintPath>$(RimWorldManaged)/UnityStubs.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
-  <Target Name="RequireGameAssemblies" BeforeTargets="ResolveReferences">
-    <Error Condition="!Exists('$(RimWorldManaged)/Assembly-CSharp.dll')" Text="Pass /p:RimWorldManaged=/path/to/RimWorld-1.7-game-root" />
+  <Target Name="RequireGameAssemblies" BeforeTargets="ResolveReferences" Condition="'$(RimWorldManaged)' != ''">
+    <Error Condition="!Exists('$(RimWorldManaged)/Assembly-CSharp.dll')" Text="Missing matching RimWorld Assembly-CSharp.dll" />
+    <Error Condition="!Exists('$(RimWorldManaged)/Waylith.dll')" Text="Missing matching RimWorld Waylith.dll" />
+    <Error Condition="!Exists('$(RimWorldManaged)/UnityStubs.dll')" Text="Missing matching RimWorld UnityStubs.dll" />
   </Target>
 </Project>

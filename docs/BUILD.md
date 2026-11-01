@@ -1,11 +1,13 @@
-# Build & test
+# Build / ビルド
+CI uses the public reference-only package Krafs.Rimworld.Ref 1.7.4985-unstable, not private copyrighted game files.
 
-Use the .NET 10 SDK and RimWorld 1.7 game root containing Assembly-CSharp.dll, Waylith.dll and UnityStubs.dll.
+CI は公開参照アセンブリ Krafs.Rimworld.Ref 1.7.4985-unstable を使い、ゲーム本体のDLLは含めません。
 
-`dotnet build Source/ColonyTaskAuditor.csproj -c Release /p:RimWorldManaged=/path/to/RimWorld`
+`dotnet build Source/ColonyTaskAuditor.csproj -c Release`
 
-The build should create `1.7/Assemblies/ColonyTaskAuditor.dll`.
+To target an exact local game build, pass `-p:RimWorldManaged=/path/to/RimWorld`. The referenced directory must contain Assembly-CSharp.dll, Waylith.dll, UnityStubs.dll.
 
-Manual tests required: (1) 2-day abandoned building order; (2) finish order and verify removal; (3) production bill shortage, suspend, fulfilled target, active worker; (4) dormant/winter farming; (5) orphan unfinished product; (6) full-to-gather animal; (7) save/reload and notification once; (8) click map location; (9) UI with 75+ records; (10) map switching and high object count.
+特定のゲーム本体でビルドする場合、対応するDLLを含むディレクトリを指定してください。
 
-A potentially stalled task is not proven to be blocked. Do not publish a gameplay-ready release until tests pass in game.
+Only publish a game-ready release after manual RimWorld 1.7 runtime and save/reload tests.
+ゲーム内の動作とセーブ・ロードを実際に検証するまでは正式リリースしないでください。

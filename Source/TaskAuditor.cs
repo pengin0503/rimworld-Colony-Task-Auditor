@@ -430,6 +430,23 @@ namespace Pengin.ColonyTaskAuditor
 
         static int Windows(int total,int cap){return total<=cap?1:(total+cap-1)/cap;}
 
+        static int ZoneRotationScans(List<Zone_Growing> zones)
+        {
+            int scans=0,i=0;
+            while(i<zones.Count)
+            {
+                int budget=MaxZoneCellsTotal,taken=0;
+                while(i<zones.Count)
+                {
+                    int cost=Math.Min(zones[i].CellCount,MaxObjects);
+                    if(cost>budget&&taken>0)break;
+                    budget-=cost;taken++;i++;
+                }
+                scans++;
+            }
+            return Math.Max(1,scans);
+        }
+
         private void ScanCore()
         {
             AuditorSettings settings = TaskAuditorMod.Settings;
@@ -604,7 +621,10 @@ namespace Pengin.ColonyTaskAuditor
                     cellBudget-=cost;processed++;
                 }
                 if(processed<zones.Count){PartialScan=true;completeCategories.Remove("grow");}
-                gaps["grow"]=Interval*(Windows(zones.Count,Math.Max(1,processed))+1);
+                // A zone is revisited once the whole list has been rotated through. Count the
+                // scans of one full budgeted rotation (zone sizes differ, so this scan's count
+                // says nothing about the others) and allow one more for the window boundary.
+                gaps["grow"]=Interval*(ZoneRotationScans(zones)+2);
                 for(int i=0;i<processed;i++)
                 {
                     Zone_Growing zone=zones[(zoneOffset+i)%zones.Count];

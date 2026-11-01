@@ -144,6 +144,6 @@ For a Blueprint_Build, `Thing.Stuff` is null (the stuff lives in `stuffToUse`). 
 Still unverified: long normal gameplay, sleep (it uses the same hold path as drafting but was not driven directly), mechanoid workers, full-map save/load and removal, rendering of the alert and window, large-map scan time/TPS and large mod lists.
 
 Review follow-up (PR #23):
-- Growing zones: the rotation window is decided before any zone is observed, so the rotation-aware gap applies to them.
+- Growing zones: the rotation window is decided before any zone is observed. The allowed gap is derived from the number of scans of one full budgeted rotation plus a boundary margin, not from this scan's count, so zones of different sizes are covered.
 - The alert rechecks each cached overdue record against its current clock, so tasks that resumed since the scan are not reported. The map switch uses the same check.
 - Thing-targeted jobs are also indexed by cell, and the 250-tick sampler matches cell-based orders. Re-running the bounded real-game probe with a mining designation next to a miner: the record was `CTA_Working` with a first-work tick at 1000 and 1300, `CTA_Waiting` while drafted, and `CTA_Working` again after undrafting. The other probe results were unchanged.

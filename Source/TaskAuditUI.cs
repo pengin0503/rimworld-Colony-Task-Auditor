@@ -128,7 +128,19 @@ namespace Pengin.ColonyTaskAuditor
         protected override void OnClick()
         {
             // First click opens the list; while it is open, clicks cycle through the locations.
-            if(!Find.WindowStack.IsOpen<Window_TaskAudit>()){Find.WindowStack.Add(new Window_TaskAudit());return;}
+            if(!Find.WindowStack.IsOpen<Window_TaskAudit>())
+            {
+                // The window lists the current map: switch to a map with overdue tasks first.
+                Map current=Find.CurrentMap;
+                TaskAuditComponent here=current==null?null:current.GetComponent<TaskAuditComponent>();
+                if(here==null||here.Overdue.Count==0)
+                {
+                    Map other=Find.Maps.FirstOrDefault(m=>{var a=m.GetComponent<TaskAuditComponent>();return a!=null&&a.Overdue.Count>0;});
+                    if(other!=null)CameraJumper.TryJump(other.Center,other);
+                }
+                Find.WindowStack.Add(new Window_TaskAudit());
+                return;
+            }
             base.OnClick();
         }
     }

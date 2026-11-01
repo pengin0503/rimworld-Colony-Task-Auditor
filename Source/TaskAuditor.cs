@@ -72,6 +72,7 @@ namespace Pengin.ColonyTaskAuditor
         private HashSet<Bill> activeBills;
         private List<Pawn> colonists;
         private int pathBudget;
+        private Dictionary<ThingDef,int> materialStocks;
 
         public TaskAuditComponent(Map map) : base(map) { }
         public override void ExposeData()
@@ -116,6 +117,25 @@ namespace Pengin.ColonyTaskAuditor
             bool working = (target != null && activeThings.Contains(target)) || activeCells.Contains(cell) ||
                 (bill != null && activeBills.Contains(bill));
             if (working) { r.Reason = "CTA_Working"; r.Confidence = "CTA_Confirmed"; return; }
+            if (target != null)
+            {
+                string reservation=BlockerEvidence.Reservation(map.reservationManager.IsReserved(target),available.Any(p=>p.CanReserve(target)));
+                if(reservation!=null){r.Reason=reservation;r.Confidence="CTA_Likely";return;}
+                Frame frame=target as Frame;
+                if(frame!=null)
+                    foreach(ThingDefCountClass cost in frame.TotalMaterialCost())
+                    {
+                        int needed=frame.ThingCountNeeded(cost.thingDef);
+                        if(needed<=0)continue;
+                        int stock;
+                        if(!materialStocks.TryGetValue(cost.thingDef,out stock))
+                        {
+                            stock=map.listerThings.ThingsOfDef(cost.thingDef).Where(t=>t.Spawned&&!t.IsForbidden(Faction.OfPlayer)).Sum(t=>t.stackCount);
+                            materialStocks[cost.thingDef]=stock;
+                        }
+                        r.Reason=BlockerEvidence.Materials(needed,stock);r.Confidence="CTA_Likely";return;
+                    }
+            }
             if (work == null && bill == null) return; // Unsupported task type: do not guess workers.
             bool allChecked = available.Count <= 12;
             foreach (Pawn pawn in available.Take(12))
@@ -140,6 +160,7 @@ namespace Pengin.ColonyTaskAuditor
                 foreach (LocalTargetInfo t in new[] {p.CurJob.targetA, p.CurJob.targetB, p.CurJob.targetC})
                     if (t.IsValid) { activeCells.Add(t.Cell); if (t.HasThing) activeThings.Add(t.Thing); }
             }
+            materialStocks=new Dictionary<ThingDef,int>();
             pathBudget = 64; // Shared across all tasks, never per task.
             var old = new Dictionary<string, AuditRecord>();
             foreach (AuditRecord r in records)

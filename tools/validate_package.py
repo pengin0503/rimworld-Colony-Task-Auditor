@@ -16,7 +16,7 @@ assert any(p.attrib.get("Include") == "Krafs.Rimworld.Ref" for p in proj.findall
 source = (root / "Source/ColonyTaskAuditor.cs").read_text(encoding="utf-8")
 assert source.count("{") == source.count("}"), "Brace count mismatch (not a compiler check)"
 assert "ModSettings" in source and "MapComponent" in source
-used = set(re.findall(r'"(CTA_[A-Za-z0-9]+)"\\.Translate\\(', source))
+used = set(re.findall(r'"(CTA_[A-Za-z0-9]+)"[.]Translate[(]', source))
 languages = []
 for language in ("English", "Japanese"):
     data = ET.parse(root / "Languages" / language / "Keyed/Strings.xml").getroot()

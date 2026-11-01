@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <CTA_Description>Potentially stalled tasks. Elapsed time alone is not proof of a defect.</CTA_Description>
+  <CTA_Threshold>Review after days: {0}</CTA_Threshold>
+  <CTA_Designations>Orders and designations</CTA_Designations>
+  <CTA_Bills>Production bills</CTA_Bills>
+  <CTA_Growing>Growing zones</CTA_Growing>
+  <CTA_Unfinished>Unfinished products</CTA_Unfinished>
+  <CTA_Gathering>Animal gathering jobs</CTA_Gathering>
+  <CTA_Notifications>Notify on first overdue detection</CTA_Notifications>
+  <CTA_Rescan>Scan current map</CTA_Rescan>
+  <CTA_Count>Monitored {0} / overdue {1}</CTA_Count>
+  <CTA_Empty>{0} empty cells; may not be plantable</CTA_Empty>
+  <CTA_Missing>Missing worktable or bound bill</CTA_Missing>
+  <CTA_Notification>{0} tasks need review. See Colony Task Auditor mod settings.</CTA_Notification>
+  <CTA_Overdue>Review</CTA_Overdue>
+  <CTA_Watching>Watching</CTA_Watching>
+  <CTA_Days>Observed for {0} days</CTA_Days>
+  <CTA_Jump>Locate</CTA_Jump>
+  <CTA_Partial>Partial scan; task counts may be incomplete.</CTA_Partial>
+</LanguageData>

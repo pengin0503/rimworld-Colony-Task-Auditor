@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <CTA_Description>作業の停滞候補を検出します。経過時間だけでは異常と断定しません。</CTA_Description>
+  <CTA_Threshold>要確認になる日数: {0}</CTA_Threshold>
+  <CTA_Designations>建築・採掘などの作業指示</CTA_Designations>
+  <CTA_Bills>製造指示</CTA_Bills>
+  <CTA_Growing>栽培ゾーン</CTA_Growing>
+  <CTA_Unfinished>未完成品</CTA_Unfinished>
+  <CTA_Gathering>搾乳・毛刈りなど</CTA_Gathering>
+  <CTA_Notifications>新しく期限超過したときに通知</CTA_Notifications>
+  <CTA_Rescan>現在のマップを検査</CTA_Rescan>
+  <CTA_Count>監視 {0}件 / 要確認 {1}件</CTA_Count>
+  <CTA_Empty>空きマス {0}（栽培可能とは限りません）</CTA_Empty>
+  <CTA_Missing>製造指示または作業台がありません</CTA_Missing>
+  <CTA_Notification>確認が必要な作業が{0}件あります。MOD設定を開いてください。</CTA_Notification>
+  <CTA_Overdue>要確認</CTA_Overdue>
+  <CTA_Watching>監視中</CTA_Watching>
+  <CTA_Days>経過 {0}日</CTA_Days>
+  <CTA_Jump>位置へ</CTA_Jump>
+  <CTA_Partial>一部のみ検査しました。件数が不完全な可能性があります。</CTA_Partial>
+</LanguageData>

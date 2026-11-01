@@ -47,6 +47,7 @@ namespace Pengin.ColonyTaskAuditor
             Scribe_Values.Look(ref Clock.FirstSeen, "progressFirstSeen", 0);
             Scribe_Values.Look(ref Clock.LastSeen, "progressLastSeen", 0);
             Scribe_Values.Look(ref Clock.LastProgress, "lastProgress", 0);
+            Scribe_Values.Look(ref Clock.HasProgress,"hasProgress",false);
             Scribe_Values.Look(ref Clock.Started, "started", -1);
             Scribe_Values.Look(ref Clock.EligibleTicks, "eligibleTicks", 0);
             Scribe_Values.Look(ref Clock.Progress, "progress", 0f);
@@ -260,7 +261,7 @@ namespace Pengin.ColonyTaskAuditor
                     var copy = new AuditRecord {Id=r.Id,Category=r.Category,Description=r.Description,FirstSeen=r.FirstSeen,
                         LastSeen=r.LastSeen,X=r.X,Z=r.Z,Reason=r.Reason,Confidence=r.Confidence};
                     var c=r.Clock ?? new ProgressClock();
-                    copy.Clock = new ProgressClock {Initialized=c.Initialized,WasEligible=c.WasEligible,Notified=c.Notified,
+                    copy.Clock = new ProgressClock {Initialized=c.Initialized,WasEligible=c.WasEligible,Notified=c.Notified,HasProgress=c.HasProgress,
                         FirstSeen=c.FirstSeen,LastSeen=c.LastSeen,LastProgress=c.LastProgress,Started=c.Started,
                         EligibleTicks=c.EligibleTicks,Progress=c.Progress};
                     old.Add(copy.Id,copy);
@@ -455,7 +456,7 @@ namespace Pengin.ColonyTaskAuditor
                     (overdue ? "CTA_Overdue".Translate() : "CTA_Watching".Translate()) +
                     " [" + ("CTA_Filter"+item.Category).Translate() + "] " + item.Description + "\n" +
                     "CTA_Days".Translate((item.Clock.EligibleTicks / 60000f).ToString("0.0")) + " / " + item.Reason.Translate() + " (" + item.Confidence.Translate() + ")" + "\n" +
-                    "CTA_Timing".Translate(item.FirstSeen,item.Clock.Started<0?"—":item.Clock.Started.ToString(),item.Clock.LastProgress));
+                    "CTA_Timing".Translate(item.FirstSeen,item.Clock.Started<0?"—":item.Clock.Started.ToString(),item.Clock.HasProgress?item.Clock.LastProgress.ToString():"—"));
                 if (item.X >= 0 &&
                     Widgets.ButtonText(new Rect(content.width - 76f, i * 108f + 5, 73f, 28f), "CTA_Jump".Translate()))
                     CameraJumper.TryJump(new IntVec3(item.X, 0, item.Z), current);

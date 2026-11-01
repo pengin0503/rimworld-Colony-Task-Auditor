@@ -9,5 +9,6 @@ To target an exact local game build, pass `-p:RimWorldManaged=/path/to/RimWorld`
 
 特定のゲーム本体でビルドする場合、対応するDLLを含むディレクトリを指定してください。
 
-Only publish a game-ready release after manual RimWorld 1.7 runtime and save/reload tests.
-ゲーム内の動作とセーブ・ロードを実際に検証するまでは正式リリースしないでください。
+Releases are published by the manually dispatched `Release` workflow on `main`. It builds with the public reference package and attaches the packaged ZIP. Release notes come from `docs/RELEASE_NOTES.md`.
+
+リリースは `main` から手動で起動する `Release` ワークフローで公開します。公開参照パッケージでビルドしたZIPを添付し、説明文は `docs/RELEASE_NOTES.md` から取ります。

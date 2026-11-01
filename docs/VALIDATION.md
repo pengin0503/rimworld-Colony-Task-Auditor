@@ -73,3 +73,23 @@ Completed bill iterations are observed by one Harmony postfix on Bill_Production
 Added recipe/construction skill diagnosis, work-type resolution from WorkGiver definitions, bounded recipe-ingredient absence checks, blueprint materials, initial map-load refresh, per-category cleanup during partial scans, full virtualized list and explicit timing display. Pre-installation creation time remains unknowable; the UI labels first observation correctly. Modded completions that bypass the vanilla method and special job implementations can remain unknown.
 
 Build/static checks and existing focused regression checks pass locally. New populated gameplay, Harmony execution, full-map save/removal and 270+ MOD performance remain unverified. Prior A/tick evidence is historical for previous production bytes. Test effort is limited to changed behavior and existing checks per the user's latest priority; no new broad test infrastructure is added.
+
+## v1.0.0 release checks (2026-11-01)
+
+Fixes made during release review (code review only; no new gameplay run):
+
+- Stall timing used to reset to zero whenever every worker was asleep, drafted or downed at a scan. With a shared sleep schedule this happened every night, so the 1–10 day threshold could never be reached. Temporary worker absence now freezes the timer and does not reset it. The interval spanning the wake-up is not counted. Intentional pauses still reset it.
+- Active-work sampling no longer overwrites the scan-level progress metric with a different value (hit points versus repeat count, fullness or crop counts). That overwrite produced false progress. Live samples are compared only with earlier live samples. Jobs on a workbench (refuel/repair) no longer count as bill work, and animal targets count only for gathering jobs.
+- Install blueprints are no longer diagnosed as lacking construction materials or skill.
+- Active-work sampling has its own exception guard. The settings list tolerates a missing map component. Designation labels fall back to the def name.
+
+Checks performed:
+
+- 22 model assertions pass (four new hold/resume assertions).
+- `validate_package.py` passes.
+- Release build has 0 warnings and 0 errors against the exact private 1.7.4985 rev1269 Assembly-CSharp/Waylith/UnityStubs.
+- Release build with `Krafs.Rimworld.Ref 1.7.4985-unstable` also has 0 warnings and 0 errors.
+- Static reference check of the public-reference DLL against the audited index: 168 members and 95 types matched, 0 mismatches. The 232 unverified references are BCL only (System.Runtime/Collections/Linq).
+- `Bill_ProductionWithUft.Notify_IterationCompleted` calls the base `Bill_Production` method (IL), so the completion postfix also covers UFT bills.
+
+Still unverified, and not claimed: normal populated gameplay, actual Harmony patch application in the running game, full-map save/load and removal, large-map scan timing/TPS, and compatibility with large mod lists. The earlier A-level and 12,000-tick evidence was produced on earlier DLL bytes.

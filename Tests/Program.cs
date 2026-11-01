@@ -44,6 +44,17 @@ static class Program
         bad.Observe(0,float.NaN,false,true,20);
         bad.Observe(10,float.NaN,false,true,20);
         Check(!bad.IsStalled(1), "non-finite observation is ineligible");
+        var night = new ProgressClock();
+        night.Observe(0,0,false,true,20); night.Observe(10,0,false,true,20); night.Observe(20,0,false,true,20);
+        night.Notified = true;
+        night.Observe(30,0,false,true,20,true); night.Observe(40,0,false,true,20,true);
+        Check(night.EligibleTicks==20 && night.Notified && !night.IsStalled(1) && night.ReachedThreshold(20), "sleep hold freezes without resetting episode");
+        night.Observe(50,0,false,true,20); night.Observe(60,0,false,true,20);
+        Check(night.EligibleTicks==30 && night.IsStalled(30), "aging resumes after hold, excluding wake-up interval");
+        night.Observe(70,1,false,true,20,true);
+        Check(night.EligibleTicks==0 && night.LastProgress==70 && !night.Notified, "progress during hold still counts as progress");
+        night.Observe(80,1,false,true,20); night.Observe(999,1,false,true,20,true);
+        Check(night.EligibleTicks==0, "long gap during hold resets uncertain time");
         var timer=System.Diagnostics.Stopwatch.StartNew();
         var many=new ProgressClock[2000];
         for(int i=0;i<many.Length;i++) many[i]=new ProgressClock();

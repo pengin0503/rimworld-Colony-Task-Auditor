@@ -1,0 +1,56 @@
+name: Release
+# Manually dispatched from main. Builds with public reference assemblies only
+# (Krafs.Rimworld.Ref); no game files are downloaded, committed or packaged.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the leading v (e.g. 1.0.0)
+        required: true
+        default: '1.0.0'
+permissions:
+  contents: write
+env:
+  MOD: ColonyTaskAuditor
+  TITLE: Colony Task Auditor
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate mod metadata and translations
+        run: python3 tools/validate_package.py
+      - name: Check About.xml version
+        run: grep -q "<modVersion>${{ inputs.version }}</modVersion>" About/About.xml
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Regression tests
+        run: dotnet run --project Tests/Tests.csproj -c Release
+      - name: Build
+        run: |
+          dotnet restore Source/$MOD.csproj
+          dotnet build Source/$MOD.csproj --configuration Release --no-restore
+      - name: Package
+        run: |
+          python3 tools/package_dev.py
+          mv dist/$MOD-development.zip dist/$MOD-v${{ inputs.version }}.zip
+          python3 - <<PY
+          import zipfile
+          names = zipfile.ZipFile("dist/$MOD-v${{ inputs.version }}.zip").namelist()
+          print("\n".join(names))
+          assert "$MOD/1.7/Assemblies/$MOD.dll" in names
+          assert "$MOD/About/About.xml" in names
+          banned = ("Assembly-CSharp", "Waylith", "UnityStubs", "0Harmony")
+          assert not [n for n in names if any(b in n for b in banned)], "game/third-party DLL in package"
+          PY
+          sha256sum dist/$MOD-v${{ inputs.version }}.zip
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ inputs.version }}" "dist/$MOD-v${{ inputs.version }}.zip" \
+            --target "$GITHUB_SHA" --title "$TITLE v${{ inputs.version }}" \
+            --notes-file docs/RELEASE_NOTES.md --latest

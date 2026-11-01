@@ -84,6 +84,15 @@ namespace Pengin.ColonyTaskAuditor
         }
         private void ObserveActiveWork()
         {
+            try{ObserveActiveWorkCore();}
+            catch(Exception e)
+            {
+                if(!activeWorkWarned){activeWorkWarned=true;Log.Warning("Colony Task Auditor active-work sampling skipped: "+e.GetType().Name);}
+            }
+        }
+        private bool activeWorkWarned;
+        private void ObserveActiveWorkCore()
+        {
             foreach(Pawn pawn in map.mapPawns.AllPawnsSpawned)
             {
                 if(!pawn.IsColonistPlayerControlled||pawn.CurJob==null)continue;
@@ -111,11 +120,19 @@ namespace Pengin.ColonyTaskAuditor
                     if(targetRecords.TryGetValue(target.Thing,out matches))
                         foreach(AuditRecord r in matches)
                         {
+                            // Bills are tracked through CurJob.bill; a refuel/repair job on the
+                            // workbench is not bill work. Animals count only for gathering jobs.
+                            if(r.Category=="bill")continue;
+                            if(r.Category=="gather"&&!(pawn.jobs.curDriver is JobDriver_GatherAnimalBodyResources))continue;
                             if(r.Clock.Started<0)r.Clock.Started=now;
                             r.Clock.EligibleTicks=0;r.Clock.WasEligible=false;
                             Frame frame=target.Thing as Frame;UnfinishedThing unfinished=target.Thing as UnfinishedThing;
                             float value=frame!=null?frame.workDone:unfinished!=null?-unfinished.workLeft:target.Thing.HitPoints;
-                            if(value!=r.Clock.Progress){r.Clock.MarkProgress(now);r.Clock.Progress=value;}
+                            // Compare live samples only with live samples of the same metric; the
+                            // scan metric (counts, fullness, repeat count) is never overwritten.
+                            float previous;
+                            if(liveProgress.TryGetValue(r.Id,out previous)&&previous!=value)r.Clock.MarkProgress(now);
+                            liveProgress[r.Id]=value;
                         }
                 }
             }
@@ -177,7 +194,8 @@ namespace Pengin.ColonyTaskAuditor
                 (work!=null?p.workSettings.WorkIsActive(work):applicable!=null&&applicable.Count>0?applicable.Any(p.workSettings.WorkIsActive):true)).ToList();
             if (enabled.Count == 0 && (work != null||applicable!=null&&applicable.Count>0))
             { r.Reason = "CTA_NoWorker"; r.Confidence = "CTA_Confirmed"; return; }
-            BuildableDef construction=target==null?null:target.def.entityDefToBuild;
+            // Install blueprints carry entityDefToBuild but need neither materials nor build skill.
+            BuildableDef construction=target is Frame||target is Blueprint_Build?target.def.entityDefToBuild:null;
             if(construction!=null&&enabled.Count>0&&!enabled.Any(p=>p.skills!=null&&
                 p.skills.GetSkill(SkillDefOf.Construction).Level>=construction.constructionSkillPrerequisite&&
                 p.skills.GetSkill(SkillDefOf.Artistic).Level>=construction.artisticSkillPrerequisite))
@@ -191,15 +209,16 @@ namespace Pengin.ColonyTaskAuditor
                 (bill == null || bill.PawnAllowedToStartAnew(p))).ToList();
             if (available.Count == 0)
             { r.Reason = "CTA_Waiting"; r.Confidence = "CTA_Uncertain"; return; }
-            bool working = (target != null && activeThings.Contains(target)) || activeCells.Contains(cell) ||
-                (bill != null && activeBills.Contains(bill));
+            // A job on the workbench itself (refuel, repair) is not evidence that this bill is worked.
+            bool working = bill != null ? activeBills.Contains(bill) :
+                (target != null && activeThings.Contains(target)) || activeCells.Contains(cell);
             if (working) { r.Reason = "CTA_Working"; r.Confidence = "CTA_Confirmed"; return; }
             if (target != null)
             {
                 string reservation=BlockerEvidence.Reservation(map.reservationManager.IsReserved(target),available.Any(p=>p.CanReserve(target)));
                 if(reservation!=null){r.Reason=reservation;r.Confidence="CTA_Likely";return;}
                 Frame frame=target as Frame;
-                if(frame!=null||target is Blueprint)
+                if(construction!=null)
                     foreach(ThingDefCountClass cost in frame!=null?frame.TotalMaterialCost():construction.CostListAdjusted(target.Stuff))
                     {
                         int needed=frame!=null?frame.ThingCountNeeded(cost.thingDef):cost.count;
@@ -285,8 +304,9 @@ namespace Pengin.ColonyTaskAuditor
                 }
                 Diagnose(r,target,cell,work,bill,paused);
                 bool working = r.Reason == "CTA_Working";
-                bool eligible = r.Reason != "CTA_Paused" && r.Reason != "CTA_Waiting";
-                r.Clock.Observe(now,progress,working,eligible,Interval*2);
+                bool eligible = r.Reason != "CTA_Paused";
+                // Sleep/draft/combat freezes the clock; it must not erase the episode daily.
+                r.Clock.Observe(now,progress,working,eligible,Interval*2,r.Reason == "CTA_Waiting");
             };
             if (settings.Designations)
             {
@@ -302,7 +322,9 @@ namespace Pengin.ColonyTaskAuditor
                     if (d.def.defName == "Mine") work=WorkTypeDefOf.Mining;
                     if (d.def.defName == "Deconstruct") work=WorkTypeDefOf.Construction;
                     if (d.def.defName == "HarvestPlant" || d.def.defName == "CutPlant") work=WorkTypeDefOf.PlantCutting;
-                    observe("designation:"+d.def.defName+":"+d.target,"designation",d.def.label+" / "+d.target,
+                    string designationLabel=string.IsNullOrEmpty(d.def.label)?d.def.defName:d.def.label;
+                    string targetLabel=target!=null?target.LabelShort:d.target.Cell.ToString();
+                    observe("designation:"+d.def.defName+":"+d.target,"designation",designationLabel+" / "+targetLabel,
                         d.target.Cell,target == null ? 0 : target.HitPoints,target,work,null,false);
                 }
                 designationOffset=all.Count==0 ? 0 : (designationOffset+count)%all.Count;
@@ -430,19 +452,20 @@ namespace Pengin.ColonyTaskAuditor
             Map current = Find.CurrentMap;
             if (current == null) return;
             TaskAuditComponent audit = current.GetComponent<TaskAuditComponent>();
+            if (audit == null) return;
             if (Widgets.ButtonText(new Rect(rect.x, rect.y + 296, 165, 30), "CTA_Rescan".Translate()))
                 audit.Scan();
             if (Widgets.ButtonText(new Rect(rect.x+rect.width-155,rect.y+296,150,30), ("CTA_Filter"+categories[filter]).Translate()))
                 filter=(filter+1)%categories.Length;
             int now = Find.TickManager.TicksGame;
             int threshold = Settings.WarningDays * 60000;
-            int overdueCount = audit.Records.Count(r => r.Clock.IsStalled(threshold));
+            int overdueCount = audit.Records.Count(r => r.Clock.ReachedThreshold(threshold));
             Widgets.Label(new Rect(rect.x + 170, rect.y + 299, Math.Max(50f,rect.width - 335), 28),
                 "CTA_Count".Translate(audit.Records.Count, overdueCount));
 
             // Overdue items are sorted first so users see urgent issues without paging.
             List<AuditRecord> display = audit.Records.Where(r=>filter==0 || r.Category==categories[filter])
-                .OrderBy(r => !r.Clock.IsStalled(threshold))
+                .OrderBy(r => !r.Clock.ReachedThreshold(threshold))
                 .ThenBy(r => r.FirstSeen).ToList();
             Rect viewport = new Rect(rect.x, rect.y + 337, rect.width, Math.Max(75f, rect.height - 340f));
             Rect content = new Rect(0, 0, Math.Max(100f, viewport.width - 20), Math.Max(viewport.height, display.Count * 108f));
@@ -451,7 +474,7 @@ namespace Pengin.ColonyTaskAuditor
             {
                 if(i*108f+108<scroll.y||i*108f>scroll.y+viewport.height)continue;
                 AuditRecord item = display[i];
-                bool overdue = item.Clock.IsStalled(threshold);
+                bool overdue = item.Clock.ReachedThreshold(threshold);
                 Widgets.Label(new Rect(0, i * 108f, content.width - 80f, 105f),
                     (overdue ? "CTA_Overdue".Translate() : "CTA_Watching".Translate()) +
                     " [" + ("CTA_Filter"+item.Category).Translate() + "] " + item.Description + "\n" +

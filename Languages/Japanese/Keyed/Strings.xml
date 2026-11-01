@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <LanguageData>
   <CTA_Description>作業の停滞候補を検出します。経過時間だけでは異常と断定しません。</CTA_Description>
   <CTA_Threshold>要確認になる日数: {0}</CTA_Threshold>
@@ -15,7 +15,25 @@
   <CTA_Notification>確認が必要な作業が{0}件あります。MOD設定を開いてください。</CTA_Notification>
   <CTA_Overdue>要確認</CTA_Overdue>
   <CTA_Watching>監視中</CTA_Watching>
-  <CTA_Days>経過 {0}日</CTA_Days>
+  <CTA_Days>作業可能時に変化なし：{0} 日</CTA_Days>
   <CTA_Jump>位置へ</CTA_Jump>
   <CTA_Partial>一部のみ検査しました。件数が不完全な可能性があります。</CTA_Partial>
+  <CTA_Unknown>不明：作業者・材料・スキル・予約を確認</CTA_Unknown>
+  <CTA_Confirmed>確定</CTA_Confirmed>
+  <CTA_Likely>推定</CTA_Likely>
+  <CTA_Uncertain>不確実</CTA_Uncertain>
+  <CTA_Paused>停止中・現在は実行条件外</CTA_Paused>
+  <CTA_Waiting>睡眠・徴兵等で作業者が一時不在：判定保留</CTA_Waiting>
+  <CTA_Forbidden>対象がプレイヤー勢力に禁止</CTA_Forbidden>
+  <CTA_NoWorker>該当作業を有効にした入植者がいない</CTA_NoWorker>
+  <CTA_BillRestriction>製造指示の作業者・スキル制限に適合する入植者がいない</CTA_BillRestriction>
+  <CTA_Working>作業者の活動を観測：停滞判定対象外</CTA_Working>
+  <CTA_Unreachable>確認した作業可能な入植者は対象に到達できない</CTA_Unreachable>
+  <CTA_Harvest>収穫可能な植物 {0} 株</CTA_Harvest>
+  <CTA_Filterall>全種類</CTA_Filterall>
+  <CTA_Filterdesignation>作業指示</CTA_Filterdesignation>
+  <CTA_Filterbill>製造指示</CTA_Filterbill>
+  <CTA_Filtergrow>栽培・収穫</CTA_Filtergrow>
+  <CTA_Filterunfinished>未完成品</CTA_Filterunfinished>
+  <CTA_Filtergather>家畜収穫</CTA_Filtergather>
 </LanguageData>

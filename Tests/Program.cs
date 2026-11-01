@@ -7,6 +7,11 @@ static class Program
     static void Check(bool value, string name) { if (!value) throw new Exception(name); tests++; }
     static void Main()
     {
+        Check(BlockerEvidence.Materials(5,0)=="CTA_MaterialMissing","missing delivered materials are diagnosed");
+        Check(BlockerEvidence.Materials(5,5)=="CTA_MaterialDelivery","available material still needs delivery");
+        Check(BlockerEvidence.Materials(0,0)==null,"completed delivery is not a shortage");
+        Check(BlockerEvidence.Reservation(true,true)==null,"reservation alone is not blockage");
+        Check(BlockerEvidence.Reservation(true,false)=="CTA_Reserved","reservation plus rejected worker reservation is evidence");
         var c = new ProgressClock();
         c.Observe(100, 0, false, true, 20);
         Check(!c.IsStalled(10), "fresh task has grace");

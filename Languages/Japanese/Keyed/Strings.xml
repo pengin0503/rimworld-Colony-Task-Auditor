@@ -36,4 +36,7 @@
   <CTA_Filtergrow>栽培・収穫</CTA_Filtergrow>
   <CTA_Filterunfinished>未完成品</CTA_Filterunfinished>
   <CTA_Filtergather>家畜収穫</CTA_Filtergather>
+  <CTA_MaterialMissing>未搬入の建築材料が利用可能な配置備蓄を上回る：所持品・運搬中の材料は未確認</CTA_MaterialMissing>
+  <CTA_MaterialDelivery>建築材料が未搬入：備蓄へのアクセス・運搬を確認</CTA_MaterialDelivery>
+  <CTA_Reserved>対象に予約があり、作業可能な入植者は予約できない：予約者を確認</CTA_Reserved>
 </LanguageData>

@@ -19,6 +19,7 @@ assert "ModSettings" in source and "MapComponent" in source
 used = set(re.findall(r'"(CTA_[A-Za-z0-9]+)"[.]Translate[(]', source))
 used |= {"CTA_"+k for k in ("Unknown","Confirmed","Likely","Uncertain","Paused","Waiting","Forbidden","NoWorker","BillRestriction","Working","Unreachable")}
 used |= {"CTA_Filter"+k for k in ("all","designation","bill","grow","unfinished","gather")}
+used |= {"CTA_MaterialMissing","CTA_MaterialDelivery","CTA_Reserved"}
 languages = []
 for language in ("English", "Japanese"):
     data = ET.parse(root / "Languages" / language / "Keyed/Strings.xml").getroot()

@@ -59,3 +59,9 @@ The existing test host's `bounded-tick.v1` accepts only its registered fixture o
 **Still blocked for v1.0:** normal populated gameplay, full-map save/load and installation/removal, actual task/feeding/wear acceptance, real outfit-manager/race/DLC interactions, 270+ MOD compatibility and actual large-map scan/TPS measurement. Earlier implementation gaps and scenario limitations remain; Issue #1 is open and no v1.0 release is created.
 
 日本語: 最新コミットで実ゲーム読み込みAは合格し、実ゲームTickと独立fixtureが12,000 Tickまで一致しました。ただしD・マップ生成は未適格化で総合判定はincompleteです。実物Scribeによる限定的なデータ往復も合格しましたが、通常プレイやマップ全体の保存・読み込み、実際の業務動作、270以上のMOD環境・実TPSの検証にはなりません。Issue #1と正式版の保留を維持します。
+
+## Blocker follow-up
+
+Adds likely frame-material delivery/stock-shortage evidence and reservation evidence. A reservation alone is never classified as a blocker: available workers must also fail reservation. Spawned non-forbidden material counts are cached by Def for the scan; inventory and in-transit contents remain unverified and are explicitly labeled. These diagnostics do not alter orders or reservations.
+
+17 pure assertions pass (five added), exact private 1.7.4985 DLL Release build has zero warnings/errors, real Scribe record/continuity regression passes, and bilingual key checks pass. The earlier A/12,000-tick result applies to the earlier production revision, not automatically this follow-up. New populated-game acceptance is pending. Other implementation and release blockers above remain open.

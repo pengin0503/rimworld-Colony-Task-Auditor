@@ -36,4 +36,7 @@
   <CTA_Filtergrow>Farming</CTA_Filtergrow>
   <CTA_Filterunfinished>Unfinished</CTA_Filterunfinished>
   <CTA_Filtergather>Animal gathering</CTA_Filtergather>
+  <CTA_MaterialMissing>Undelivered construction material exceeds available spawned stocks; inventory/delivery contents unverified</CTA_MaterialMissing>
+  <CTA_MaterialDelivery>Construction materials are not yet delivered; stock access and hauling need inspection</CTA_MaterialDelivery>
+  <CTA_Reserved>Target is reserved and available workers cannot reserve it; inspect reservation owner</CTA_Reserved>
 </LanguageData>

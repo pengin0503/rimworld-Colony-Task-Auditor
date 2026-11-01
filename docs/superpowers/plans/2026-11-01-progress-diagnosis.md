@@ -23,3 +23,5 @@ Ruling: Execute inline without design approval round or subagents because the us
 Baseline: package metadata and existing 18 translation keys pass. No behavioral tests existed. Previous A-level evidence applies to the previous DLL only.
 
 Checkpoint: clock, observation adapters, bilingual UI, pure tests and packaging implemented. Exact-DLL build and 12 assertions pass. Scribe integration fails on stock CLR / game ObjectPool version mismatch. Initial RED was environment-blocked; gap-reset mutation subsequently verified regression sensitivity. Material/reservation completeness and gameplay acceptance remain open. Self-review used because user requested no subagents.
+
+Follow-up: add likely construction-material and reservation diagnosis with five test-first assertions; cache counts per Def. RED: missing BlockerEvidence source. GREEN: 17 model assertions; exact-DLL build and real Scribe regression pass. Populated workload acceptance remains pending. No release claim.

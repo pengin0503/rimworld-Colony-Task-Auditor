@@ -4,29 +4,90 @@
 
 ## 日本語
 
-Colony Task Auditorは、RimWorld 1.7で長時間実行されていない作業を一覧表示するMODです。建築・採掘などの作業指示、製造指示、栽培、未完成品、搾乳・毛刈りを監視します。
+Colony Task Auditor は RimWorld 1.7 用の診断MODです。止まったままになっている作業指示を見つけ、原因を確信度付きで表示します。作業の強制・指示の削除・優先度や設定の変更は一切行いません。
 
-MOD設定で監視対象と警告までの日数を指定でき、種類別に絞り込み、検出した作業の位置へ移動できます。進捗値の変化と作業者の活動を観測し、禁止・作業者設定・製造指示制限・到達性を確信度付きで表示します。睡眠・徴兵等で作業者が一時不在の場合や停止中の指示では判定を保留します。指示を強制実行・削除したり、入植者の優先度を変更することはありません。
+### 監視対象
 
-**現在は開発版で、ゲーム内の動作は未確認です。** 原因を特定できない作業は「不明」です。建築・製造材料、予約、必要スキルを診断します。所持品・運搬中の材料は推定に含めず、不明・推定として表示します。観測間隔中の作業を見逃す場合があり、一覧の経過時間だけでは異常の証明になりません。
+- 建築（ブループリント・建設中フレーム）、採掘、解体、伐採・収穫の指示
+- 製造指示（無制限の繰り返し指示を含む）
+- 栽培区画の未播種セル・収穫待ちの作物
+- 未完成品
+- 搾乳・毛刈りが可能な家畜
 
-Harmonyが必要です。製造完了の観測に1か所の通知用パッチを使い、ジョブや指示は変更しません。250 Tickごとに活動中の作業者だけを観測し、詳細診断は5,000 Tick間隔です。初回観測・作業開始観測・最終進捗のTickを表示します。導入前の作成時刻は分からないため初回観測と表記します。
+### 主な機能
 
-### 利用方法
+- 初回観測・作業開始・最終進捗の時刻（Tick）を記録します。導入前からある指示の本当の作成時刻は分からないため、「初回観測」と表示します。
+- 進捗値の変化と作業者の活動を観測して停滞を判定します。活動中の作業者は250 Tickごと、詳細診断は5,000 Tickごとです。製造の完了はHarmonyの通知用パッチ1か所で受け取ります。
+- 原因の診断: 作業者不在、スキル不足、材料不足・未搬入、禁止、製造指示の制限、予約、到達不能。
+- 確信度は「確定」「推定」「不確実」の3段階です。原因を特定できない場合は「不明」と表示します。
+- 次の場合は停滞とみなしません。
+  - 停止中・目標数に達した製造指示、冬など播種できない時期の区画は、計測をリセットします。
+  - 作業者全員が睡眠・徴兵・ダウン・精神状態中の間は、計測を一時停止します（リセットはしません）。
+  - 新しく見つかった指示にも猶予があります。
+- 通知は確信度「確定」の停滞1件につき1回だけ出ます。進捗があるまで再通知しません。この状態はセーブデータに保存されます。
+- 一覧表示、種類別フィルター、該当位置へのカメラ移動、再スキャンが使えます。
+- 監視する種類、警告までの日数（1〜10日）、通知の有無を設定できます。
 
-RimWorld 1.7用のビルドをMODフォルダへ配置し、有効化してください。「設定」→「MOD設定」→「Colony Task Auditor」で監視条件、検出一覧、位置表示を確認できます。安定性が確認されるまで重要なセーブデータでは使用しないでください。
+### 使い方
+
+1. [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077)（`brrainz.harmony`）を導入し、このMODより上に配置します。
+2. リリースのZIPを展開した `ColonyTaskAuditor` フォルダを RimWorld の `Mods` フォルダに置き、有効化します。
+3. 「設定」→「MOD設定」→「Colony Task Auditor」で、監視条件・検出一覧・位置移動を使います。
+
+途中導入・途中削除ができます（記録はマップ単位でセーブに保存され、削除後は単に読み込まれなくなります）。
+
+### 制限事項と未検証範囲
+
+- **通常のゲームプレイでの動作確認は行っていません。** 公開前に確認したのは次の範囲です。
+  - 実物のゲームDLLを参照したビルド
+  - 静的な参照照合
+  - モデル単体の確認
+  - 限定的なセーブ形式の確認
+- 所持品・運搬中の材料は在庫に数えません。そのため材料関連の診断は「推定」です。到達性は一部の作業者で抽出して判定します。
+- 観測間隔の間に終わった作業は、製造の完了を除いて見逃すことがあります。バニラの完了処理を通らないMODの作業は検出できない場合があります。
+- 大規模マップでのスキャン時間・TPSへの影響と、多数のMODとの互換性は計測・検証していません。対象が上限（指示・フレーム各5,000件、物体12,000件）を超える場合は分割して検査し、その旨を一覧の下に表示します。
 
 ## English
 
-Colony Task Auditor is a RimWorld 1.7 mod for listing work that has remained unattended for an extended period. It monitors construction/mining designations, production bills, growing zones, unfinished products, and animal milk/shearing work.
+Colony Task Auditor is a diagnostic mod for RimWorld 1.7. It finds work orders that remain stalled and shows likely causes with an explicit confidence level. It never forces jobs, deletes orders or changes priorities or settings.
 
-In mod settings, choose monitored categories and alert thresholds, filter categories and jump to affected map locations. It samples progress changes and worker activity, and displays forbidden targets, work settings, bill restrictions and reachability with confidence levels. Monitoring pauses when workers are temporarily unavailable (sleep/drafting) or instructions are suspended. It does not force, delete or reorder work or change pawn priorities.
+### Monitored work
 
-**This is a development build and has not been tested during gameplay.** Unestablished causes remain unknown; construction/recipe materials, reservations and skill requirements are diagnosed with uncertainty for inventories and in-transit supplies. Activity between samples may be missed, and elapsed observation time alone does not establish an abnormal stall.
+- Construction (blueprints and frames), mining, deconstruction, plant cutting/harvest designations
+- Production bills, including unlimited repeat bills
+- Unsown cells and harvestable crops in growing zones
+- Unfinished products
+- Colony animals ready for milking or shearing
 
-Harmony is required for a single completion-observation postfix. Work orders and jobs are not modified. Active workers are sampled every 250 ticks; detailed diagnosis runs every 5,000 ticks. First observation, first sampled work and last progress ticks are shown. Creation times before installation are unavailable and are labeled first observation.
+### Features
+
+- Records first observation, first observed work and last progress ticks. The real creation time of orders that existed before installation is unknown and is labeled "first observation".
+- Stalls are judged from observed progress values and worker activity. Active workers are sampled every 250 ticks; detailed diagnosis runs every 5,000 ticks. Production completions come from a single Harmony notification postfix.
+- Diagnosed causes: no assigned worker, missing skill, missing or undelivered materials, forbidden, bill restrictions, reservations, unreachable.
+- Confidence has three levels: confirmed, likely and uncertain. Causes that cannot be established are shown as unknown.
+- The following are not treated as stalls:
+  - Suspended or completed bills and zones that cannot be sown (for example in winter) reset the timer.
+  - Periods when every worker is asleep, drafted, downed or in a mental state pause the timer; they do not reset it.
+  - Newly found orders get a grace period.
+- A notification is sent once per confirmed stall and is not repeated until progress occurs. This state is stored in the save.
+- Task list, category filter, jump-to-location and manual rescan.
+- Settings for monitored categories, warning threshold (1–10 days) and notifications.
 
 ### Usage
 
-Install a RimWorld 1.7 build to your Mods folder and enable it. Open Settings → Mod Settings → Colony Task Auditor to configure monitoring and review detected tasks or their locations. Avoid important save files until the mod has been validated.
+1. Install [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) (`brrainz.harmony`) and load it above this mod.
+2. Extract the release ZIP, place the `ColonyTaskAuditor` folder in RimWorld's `Mods` folder and enable it.
+3. Open Settings → Mod Settings → Colony Task Auditor to configure monitoring, review the list and jump to locations.
 
+The mod can be added to or removed from an existing save. Records are stored per map; after removal they are simply no longer loaded.
+
+### Limitations and unverified scope
+
+- **Not yet tested in normal gameplay.** Before release, only the following were checked:
+  - a build against the real game DLLs
+  - static reference matching
+  - model unit checks
+  - limited save-format checks
+- Inventory and in-transit materials are not counted, so material diagnoses are "likely". Reachability is checked for a sample of workers.
+- Work that finishes between samples can be missed, except production completions. Modded work that bypasses vanilla completion may not be detected.
+- Scan time and TPS impact on large maps, and compatibility with large mod lists, have not been measured or verified. When targets exceed the caps (5,000 designations/frames, 12,000 objects), scans are split across intervals and a notice is shown below the list.

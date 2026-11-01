@@ -6,7 +6,10 @@
   <supportedVersions>
     <li>1.7</li>
   </supportedVersions>
-  <description>Inspects potentially stalled construction, production, farming, unfinished products and animal gathering. Development source; not game-tested.</description>
+  <modVersion>1.0.0</modVersion>
+  <description>Monitors construction, mining, deconstruction, production bills, sowing/harvesting, unfinished products and milking/shearing, and diagnoses why tasks stall (workers, skills, materials, forbidden, reservations, reachability) with an explicit confidence level. Diagnosis only: it never forces jobs, deletes orders or changes settings. Requires Harmony.
+
+作業指示の停滞を監視し、原因を確信度付きで診断します。作業の強制・指示の削除・設定の変更は行いません。Harmonyが必要です。</description>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>
@@ -14,4 +17,7 @@
       <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
     </li>
   </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
 </ModMetaData>

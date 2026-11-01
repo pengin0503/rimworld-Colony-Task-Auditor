@@ -11,6 +11,14 @@ namespace Pengin.ColonyTaskAuditor
 
         public void Observe(int now, float progress, bool working, bool eligible, int maxGap)
         {
+            Observe(now, progress, working, eligible, maxGap, false);
+        }
+
+        // hold: workers are temporarily unavailable (asleep, drafted, downed). The clock is
+        // frozen instead of reset, so a nightly sleep neither ages nor erases the episode.
+        // The interval after a hold is not counted because the wake-up time is unknown.
+        public void Observe(int now, float progress, bool working, bool eligible, int maxGap, bool hold)
+        {
             if (float.IsNaN(progress) || float.IsInfinity(progress)) eligible = false;
             if (!Initialized || now < LastSeen)
             {
@@ -24,6 +32,12 @@ namespace Pengin.ColonyTaskAuditor
             }
             int elapsed = now - LastSeen;
             bool changed = progress != Progress;
+            if (hold && eligible && !changed && !working && elapsed <= maxGap)
+            {
+                LastSeen = now;
+                WasEligible = false;
+                return;
+            }
             // Changes in either direction restart observation: a reset/reconfigured bill
             // or crop cycle is not evidence of an unchanged task.
             if (changed || working || elapsed > maxGap || !eligible)
@@ -48,6 +62,13 @@ namespace Pengin.ColonyTaskAuditor
         public bool IsStalled(int threshold)
         {
             return Initialized && WasEligible && EligibleTicks >= Math.Max(1, threshold);
+        }
+
+        // Display-only: an episode that already reached the threshold stays visible while
+        // the clock is frozen by a temporary hold. Alerts still require IsStalled.
+        public bool ReachedThreshold(int threshold)
+        {
+            return Initialized && EligibleTicks >= Math.Max(1, threshold);
         }
     }
 }

@@ -17,13 +17,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Progress regression tests
+        run: dotnet run --project Tests/Tests.csproj -c Release
       - name: Restore public reference assemblies
         run: dotnet restore Source/ColonyTaskAuditor.csproj
       - name: Compile (no game files distributed)
         run: dotnet build Source/ColonyTaskAuditor.csproj --configuration Release --no-restore
+      - name: Package development mod
+        run: python3 tools/package_dev.py
       - uses: actions/upload-artifact@v4
         with:
           name: ColonyTaskAuditor-development-dll
-          path: 1.7/Assemblies/ColonyTaskAuditor.dll
+          path: dist/ColonyTaskAuditor-development.zip
           if-no-files-found: error
           retention-days: 7
+

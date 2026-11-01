@@ -2,3 +2,5 @@
 **/obj/
 1.7/Assemblies/
 *.dll
+
+dist/

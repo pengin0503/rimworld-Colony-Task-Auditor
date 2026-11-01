@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <LanguageData>
   <CTA_Description>Potentially stalled tasks. Elapsed time alone is not proof of a defect.</CTA_Description>
   <CTA_Threshold>Review after days: {0}</CTA_Threshold>
@@ -15,7 +15,25 @@
   <CTA_Notification>{0} tasks need review. See Colony Task Auditor mod settings.</CTA_Notification>
   <CTA_Overdue>Review</CTA_Overdue>
   <CTA_Watching>Watching</CTA_Watching>
-  <CTA_Days>Observed for {0} days</CTA_Days>
+  <CTA_Days>Eligible unchanged observation: {0} days</CTA_Days>
   <CTA_Jump>Locate</CTA_Jump>
   <CTA_Partial>Partial scan; task counts may be incomplete.</CTA_Partial>
+  <CTA_Unknown>Unknown; inspect worker, materials, skills and reservations</CTA_Unknown>
+  <CTA_Confirmed>Confirmed</CTA_Confirmed>
+  <CTA_Likely>Likely</CTA_Likely>
+  <CTA_Uncertain>Uncertain</CTA_Uncertain>
+  <CTA_Paused>Intentionally paused or not currently due</CTA_Paused>
+  <CTA_Waiting>Workers temporarily unavailable; monitoring paused</CTA_Waiting>
+  <CTA_Forbidden>Target forbidden to player faction</CTA_Forbidden>
+  <CTA_NoWorker>No colonist has the relevant work type enabled</CTA_NoWorker>
+  <CTA_BillRestriction>Bill worker/skill restrictions exclude current colonists</CTA_BillRestriction>
+  <CTA_Working>Worker activity observed; not a stall</CTA_Working>
+  <CTA_Unreachable>No checked available worker can reach target</CTA_Unreachable>
+  <CTA_Harvest>{0} harvestable plants</CTA_Harvest>
+  <CTA_Filterall>All categories</CTA_Filterall>
+  <CTA_Filterdesignation>Orders</CTA_Filterdesignation>
+  <CTA_Filterbill>Bills</CTA_Filterbill>
+  <CTA_Filtergrow>Farming</CTA_Filtergrow>
+  <CTA_Filterunfinished>Unfinished</CTA_Filterunfinished>
+  <CTA_Filtergather>Animal gathering</CTA_Filtergather>
 </LanguageData>

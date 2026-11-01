@@ -13,10 +13,12 @@ assert metadata.findtext("supportedVersions/li") == "1.7"
 proj = ET.parse(root / "Source/ColonyTaskAuditor.csproj").getroot()
 assert proj.findtext(".//TargetFramework") == "net10.0"
 assert any(p.attrib.get("Include") == "Krafs.Rimworld.Ref" for p in proj.findall(".//PackageReference"))
-source = (root / "Source/TaskAuditor.cs").read_text(encoding="utf-8")
+source = "\n".join(p.read_text(encoding="utf-8") for p in (root / "Source").glob("*.cs"))
 assert source.count("{") == source.count("}"), "Brace count mismatch (not a compiler check)"
 assert "ModSettings" in source and "MapComponent" in source
 used = set(re.findall(r'"(CTA_[A-Za-z0-9]+)"[.]Translate[(]', source))
+used |= {"CTA_"+k for k in ("Unknown","Confirmed","Likely","Uncertain","Paused","Waiting","Forbidden","NoWorker","BillRestriction","Working","Unreachable")}
+used |= {"CTA_Filter"+k for k in ("all","designation","bill","grow","unfinished","gather")}
 languages = []
 for language in ("English", "Japanese"):
     data = ET.parse(root / "Languages" / language / "Keyed/Strings.xml").getroot()
@@ -28,3 +30,4 @@ for language in ("English", "Japanese"):
     languages.append(set(keys))
 assert languages[0] == languages[1], "Translation keys differ"
 print(f"OK: ColonyTaskAuditor metadata and bilingual keys ({len(used)} used)")
+

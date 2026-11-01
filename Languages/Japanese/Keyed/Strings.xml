@@ -24,7 +24,7 @@
   <CTA_Uncertain>不確実</CTA_Uncertain>
   <CTA_Paused>停止中・現在は実行条件外</CTA_Paused>
   <CTA_Waiting>睡眠・徴兵等で作業者が一時不在：判定保留</CTA_Waiting>
-  <CTA_Forbidden>対象がプレイヤー勢力に禁止</CTA_Forbidden>
+  <CTA_Forbidden>対象が禁止されている：意図的な保留として扱い、停滞時間に数えない</CTA_Forbidden>
   <CTA_NoWorker>該当作業を有効にした入植者がいない</CTA_NoWorker>
   <CTA_BillRestriction>製造指示の作業者・スキル制限に適合する入植者がいない</CTA_BillRestriction>
   <CTA_Working>作業者の活動を観測：停滞判定対象外</CTA_Working>
@@ -43,4 +43,19 @@
   <CTA_BillMaterials>製造材料に適合する許可済み配置アイテムがない：所持品・搬入は未確認</CTA_BillMaterials>
   <CTA_ProgressHookUnavailable>完了通知を観測できません：走査間の製造完了は未確認です。Harmonyを確認してください。</CTA_ProgressHookUnavailable>
   <CTA_Timing>初回観測Tick {0}；最初の作業観測 {1}；最終進捗 {2}</CTA_Timing>
+  <CTA_OverdueOnly>要確認のみ</CTA_OverdueOnly>
+  <CTA_HeldBacklog>順番待ち（同じ作業が他の場所で進行中）</CTA_HeldBacklog>
+  <CTA_PartialFailed>一部のみ検査：{0}件は調べられなかったため飛ばしました（ログ参照）。</CTA_PartialFailed>
+  <CTA_NoMap>コロニーのマップを開いてください。</CTA_NoMap>
+  <CTA_AlertLabel>停滞中の作業：{0}件</CTA_AlertLabel>
+  <CTA_AlertMore>ほか{0}件</CTA_AlertMore>
+  <CTA_AlertExplanation>作業可能な状態のまま、設定した日数のあいだ進捗がない作業です。表示している原因は、示した確信度での診断であり、確定ではありません。</CTA_AlertExplanation>
+  <CTA_AlertClick>クリックで一覧を開きます。一覧を開いている間は、クリックするたびに各位置へ順に移動します。</CTA_AlertClick>
+  <CTA_ShowAlert>停滞中の作業をアラートで表示</CTA_ShowAlert>
+  <CTA_OpenList>作業一覧ウィンドウを開く</CTA_OpenList>
+  <CTA_Queued>自律作業台で実行中の指示の完了待ち</CTA_Queued>
+  <CTA_MineQueued>採掘範囲の内側：周囲の岩を掘ると到達可能になる</CTA_MineQueued>
+  <CTA_SowBlocked>空きセルがすべて物で塞がれている：運び出すと播種できる</CTA_SowBlocked>
+  <CTA_NoWorkersOnMap>このマップに入植者・メカがいない：判定保留</CTA_NoWorkersOnMap>
+  <CTA_EmptyBlocked>（うち{0}マスは物で塞がれている）</CTA_EmptyBlocked>
 </LanguageData>

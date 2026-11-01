@@ -6,10 +6,10 @@
   <supportedVersions>
     <li>1.7</li>
   </supportedVersions>
-  <modVersion>1.0.0</modVersion>
-  <description>Monitors construction, mining, deconstruction, production bills, sowing/harvesting, unfinished products and milking/shearing, and diagnoses why tasks stall (workers, skills, materials, forbidden, reservations, reachability) with an explicit confidence level. Diagnosis only: it never forces jobs, deletes orders or changes settings. Requires Harmony.
+  <modVersion>1.0.1</modVersion>
+  <description>Monitors construction, mining, deconstruction, production bills, sowing/harvesting, unfinished products and milking/shearing, and diagnoses why tasks stall (workers, skills, materials, forbidden, reservations, reachability) with an explicit confidence level. Stalled tasks are shown in an alert and a list window. Diagnosis only: it never forces jobs, deletes orders or changes settings. Requires Harmony.
 
-作業指示の停滞を監視し、原因を確信度付きで診断します。作業の強制・指示の削除・設定の変更は行いません。Harmonyが必要です。</description>
+建築・採掘・解体、製造指示、播種・収穫、未完成品、搾乳・毛刈りを監視し、作業が止まっている原因（作業者・スキル・材料・禁止・予約・到達性）を確信度付きで診断します。停滞はアラートと一覧ウィンドウで確認できます。診断専用で、作業の強制・指示の削除・設定の変更は行いません。Harmonyが必要です。</description>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>

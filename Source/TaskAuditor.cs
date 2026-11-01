@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
-using UnityEngine;
 using Verse;
 using Verse.AI;
 using System.Diagnostics;
@@ -13,7 +12,7 @@ namespace Pengin.ColonyTaskAuditor
     {
         public int WarningDays = 2;
         public bool Designations = true, Bills = true, Farming = true, Unfinished = true, Gathering = true;
-        public bool Notifications = true;
+        public bool Notifications = true, ShowAlert = true;
         public override void ExposeData()
         {
             Scribe_Values.Look(ref WarningDays, "warningDays", 2);
@@ -23,6 +22,7 @@ namespace Pengin.ColonyTaskAuditor
             Scribe_Values.Look(ref Unfinished, "unfinished", true);
             Scribe_Values.Look(ref Gathering, "gathering", true);
             Scribe_Values.Look(ref Notifications, "notifications", true);
+            Scribe_Values.Look(ref ShowAlert, "showAlert", true);
             base.ExposeData();
         }
     }
@@ -33,6 +33,9 @@ namespace Pengin.ColonyTaskAuditor
         public int FirstSeen, LastSeen, X = -1, Z = -1;
         public ProgressClock Clock = new ProgressClock();
         public string Reason = "CTA_Unknown", Confidence = "CTA_Uncertain";
+        // Transient, recomputed every scan: the timer is frozen because the same work type
+        // or workbench is busy elsewhere (normal backlog). Not saved.
+        public bool Held;
         public void ExposeData()
         {
             Scribe_Values.Look(ref Id, "id", "");
@@ -58,30 +61,85 @@ namespace Pengin.ColonyTaskAuditor
         }
     }
 
+    // Everything Diagnose needs about one monitored task. Built per scan, never saved.
+    sealed class TaskContext
+    {
+        public Thing Target;
+        public IntVec3 Cell = IntVec3.Invalid;
+        public WorkTypeDef Work;
+        public Bill Bill;
+        public Building Bench;
+        public Zone_Growing Zone;
+        public string PausedReason;
+        public SkillDef Skill;
+        public int MinSkill;
+        public bool SowBlocked, MineQueued;
+        public Predicate<Job> Matches;
+    }
+
+    enum TaskState { Eligible, Paused, Hold, Working }
+
     public sealed class TaskAuditComponent : MapComponent
     {
         private const int Interval = 5000;
-        private const int MaxDesignations = 5000, MaxObjects = 12000;
+        // Per-scan work budgets. Categories over budget rotate through their entries and
+        // keep unseen records (and their clocks) instead of pruning or resetting them.
+        private const int MaxDesignations = 5000, MaxObjects = 12000, MaxBills = 1500,
+            MaxZoneCellsTotal = 40000, MaxAnimals = 1000;
         private List<AuditRecord> records = new List<AuditRecord>();
         public IReadOnlyList<AuditRecord> Records { get { return records; } }
         public int LastScanTick { get; private set; }
         public bool PartialScan { get; private set; }
+        public int FailedItems { get; private set; }
         public double ScanMilliseconds { get; private set; }
-        private int designationOffset, objectOffset,constructionOffset;
-        private HashSet<Thing> activeThings;
-        private HashSet<IntVec3> activeCells;
+        // Overdue records seen in the last scan, used by the alert (cheap to read per frame).
+        public List<AuditRecord> Overdue { get; private set; } = new List<AuditRecord>();
+        private int designationOffset, objectOffset, constructionOffset, billOffset, zoneOffset, animalOffset;
+        private List<Pawn> workers;
+        private List<Job> activeJobs;
+        private Dictionary<Thing,List<Job>> jobsByThing;
+        private Dictionary<IntVec3,List<Job>> jobsByCell;
         private HashSet<Bill> activeBills;
-        private List<Pawn> colonists;
-        private int pathBudget,ingredientBudget;
-        private Dictionary<string,AuditRecord> recordLookup=new Dictionary<string,AuditRecord>();
-        private bool needsInitialScan=true;
-        private Dictionary<Thing,List<AuditRecord>> targetRecords=new Dictionary<Thing,List<AuditRecord>>();
-        private Dictionary<string,float> liveProgress=new Dictionary<string,float>();
+        private HashSet<Thing> busyBenches;
+        // Work types observed in progress since the previous scan (250-tick samples + scan).
+        private HashSet<WorkTypeDef> recentWorkTypes = new HashSet<WorkTypeDef>();
+        private int pathBudget, ingredientBudget;
+        private Dictionary<string,AuditRecord> recordLookup = new Dictionary<string,AuditRecord>();
+        private bool needsInitialScan = true;
+        private Dictionary<Thing,List<AuditRecord>> targetRecords = new Dictionary<Thing,List<AuditRecord>>();
+        private Dictionary<IntVec3,List<AuditRecord>> cellRecords = new Dictionary<IntVec3,List<AuditRecord>>();
+        private Dictionary<string,Predicate<Job>> matchers = new Dictionary<string,Predicate<Job>>();
+        private Dictionary<string,float> liveProgress = new Dictionary<string,float>();
+        private HashSet<string> warned = new HashSet<string>();
+        private bool activeWorkWarned;
+        private Dictionary<ThingDef,int> materialStocks;
+        // Dictionary keys cannot be null; "no specific work type" is a valid key here.
+        sealed class WorkKey
+        {
+            readonly WorkTypeDef work;
+            public WorkKey(WorkTypeDef work){this.work=work;}
+            public override bool Equals(object o){var k=o as WorkKey;return k!=null&&k.work==work;}
+            public override int GetHashCode(){return work==null?0:work.GetHashCode();}
+        }
+        private readonly Dictionary<WorkKey,List<Pawn>> enabledCache=new Dictionary<WorkKey,List<Pawn>>();
+        private readonly Dictionary<WorkKey,List<Pawn>> availableCache=new Dictionary<WorkKey,List<Pawn>>();
+        private static Dictionary<ThingDef,HashSet<WorkTypeDef>> workMappings;
+        private static List<ThingDef> unfinishedDefs;
+        private static readonly Dictionary<DesignationDef,Predicate<Job>> designationMatchers = new Dictionary<DesignationDef,Predicate<Job>>();
+
+        public TaskAuditComponent(Map map) : base(map) { }
+
         public void NotifyBillProgress(Bill bill)
         {
             AuditRecord record;
             if(recordLookup.TryGetValue("bill:"+bill.GetUniqueLoadID(),out record))record.Clock.MarkProgress(Find.TickManager.TicksGame);
         }
+
+        static bool IsWorker(Pawn p)
+        {
+            return p.IsColonistPlayerControlled || (p.IsColonyMechPlayerControlled && p.workSettings != null);
+        }
+
         private void ObserveActiveWork()
         {
             try{ObserveActiveWorkCore();}
@@ -90,20 +148,21 @@ namespace Pengin.ColonyTaskAuditor
                 if(!activeWorkWarned){activeWorkWarned=true;Log.Warning("Colony Task Auditor active-work sampling skipped: "+e.GetType().Name);}
             }
         }
-        private bool activeWorkWarned;
         private void ObserveActiveWorkCore()
         {
+            int now=Find.TickManager.TicksGame;
             foreach(Pawn pawn in map.mapPawns.AllPawnsSpawned)
             {
-                if(!pawn.IsColonistPlayerControlled||pawn.CurJob==null)continue;
-                int now=Find.TickManager.TicksGame;
-                if(pawn.CurJob.bill!=null)
+                if(pawn.CurJob==null||!IsWorker(pawn))continue;
+                Job job=pawn.CurJob;
+                if(job.workGiverDef!=null&&job.workGiverDef.workType!=null)recentWorkTypes.Add(job.workGiverDef.workType);
+                AuditRecord r;
+                if(job.bill!=null)
                 {
-                    string id="bill:"+pawn.CurJob.bill.GetUniqueLoadID();AuditRecord r;
+                    string id="bill:"+job.bill.GetUniqueLoadID();
                     if(recordLookup.TryGetValue(id,out r))
                     {
-                        if(r.Clock.Started<0)r.Clock.Started=now;
-                        r.Clock.EligibleTicks=0;r.Clock.WasEligible=false;
+                        MarkWorking(r,now);
                         JobDriver_DoBill driver=pawn.jobs.curDriver as JobDriver_DoBill;
                         if(driver!=null)
                         {
@@ -113,49 +172,100 @@ namespace Pengin.ColonyTaskAuditor
                         }
                     }
                 }
-                foreach(LocalTargetInfo target in new[]{pawn.CurJob.targetA,pawn.CurJob.targetB,pawn.CurJob.targetC})
+                // Zone work (sowing, harvesting) is matched by the zone of the job's cell.
+                if((job.def==JobDefOf.Sow||job.def==JobDefOf.Harvest)&&job.targetA.IsValid)
                 {
+                    Zone_Growing zone=map.zoneManager.ZoneAt(job.targetA.Cell) as Zone_Growing;
+                    if(zone!=null&&recordLookup.TryGetValue((job.def==JobDefOf.Sow?"grow:":"harvest:")+zone.ID,out r))MarkWorking(r,now);
+                }
+                foreach(LocalTargetInfo target in new[]{job.targetA,job.targetB,job.targetC})
+                {
+                    if(!target.IsValid)continue;
+                    List<AuditRecord> cellMatches;
+                    if(cellRecords.TryGetValue(target.Cell,out cellMatches))
+                        foreach(AuditRecord match in cellMatches)
+                        {
+                            Predicate<Job> cellMatcher;
+                            if(matchers.TryGetValue(match.Id,out cellMatcher)&&cellMatcher!=null&&cellMatcher(job))MarkWorking(match,now);
+                        }
                     if(!target.HasThing)continue;
                     List<AuditRecord> matches;
-                    if(targetRecords.TryGetValue(target.Thing,out matches))
-                        foreach(AuditRecord r in matches)
-                        {
-                            // Bills are tracked through CurJob.bill; a refuel/repair job on the
-                            // workbench is not bill work. Animals count only for gathering jobs.
-                            if(r.Category=="bill")continue;
-                            if(r.Category=="gather"&&!(pawn.jobs.curDriver is JobDriver_GatherAnimalBodyResources))continue;
-                            if(r.Clock.Started<0)r.Clock.Started=now;
-                            r.Clock.EligibleTicks=0;r.Clock.WasEligible=false;
-                            Frame frame=target.Thing as Frame;UnfinishedThing unfinished=target.Thing as UnfinishedThing;
-                            float value=frame!=null?frame.workDone:unfinished!=null?-unfinished.workLeft:target.Thing.HitPoints;
-                            // Compare live samples only with live samples of the same metric; the
-                            // scan metric (counts, fullness, repeat count) is never overwritten.
-                            float previous;
-                            if(liveProgress.TryGetValue(r.Id,out previous)&&previous!=value)r.Clock.MarkProgress(now);
-                            liveProgress[r.Id]=value;
-                        }
+                    if(!targetRecords.TryGetValue(target.Thing,out matches))continue;
+                    foreach(AuditRecord match in matches)
+                    {
+                        // Only the job that performs this task counts; a refuel/repair/haul
+                        // job on the same Thing is not progress on it.
+                        Predicate<Job> matcher;
+                        if(!matchers.TryGetValue(match.Id,out matcher)||matcher==null||!matcher(job))continue;
+                        MarkWorking(match,now);
+                        Frame frame=target.Thing as Frame;UnfinishedThing unfinished=target.Thing as UnfinishedThing;
+                        float value=frame!=null?frame.workDone:unfinished!=null?-unfinished.workLeft:target.Thing.HitPoints;
+                        // Live samples are compared only with earlier live samples of the same
+                        // metric; the scan metric (counts, fullness, repeat count) is untouched.
+                        float previous;
+                        if(liveProgress.TryGetValue(match.Id,out previous)&&previous!=value)match.Clock.MarkProgress(now);
+                        liveProgress[match.Id]=value;
+                    }
                 }
             }
         }
-        private Dictionary<ThingDef,int> materialStocks;
-        private Dictionary<ThingDef,HashSet<WorkTypeDef>> workMappings;
-        private void BuildWorkMappings()
+        static void MarkWorking(AuditRecord r,int now)
+        {
+            if(r.Clock.Started<0)r.Clock.Started=now;
+            r.Clock.EligibleTicks=0;r.Clock.WasEligible=false;
+        }
+
+        private static void BuildStaticMappings()
         {
             if(workMappings!=null)return;
-            workMappings=new Dictionary<ThingDef,HashSet<WorkTypeDef>>();
+            var mappings=new Dictionary<ThingDef,HashSet<WorkTypeDef>>();
             foreach(WorkGiverDef giver in DefDatabase<WorkGiverDef>.AllDefsListForReading)
             {
                 if(giver.workType==null||giver.fixedBillGiverDefs==null||giver.giverClass==null||!typeof(WorkGiver_DoBill).IsAssignableFrom(giver.giverClass))continue;
                 foreach(ThingDef def in giver.fixedBillGiverDefs)
                 {
                     HashSet<WorkTypeDef> types;
-                    if(!workMappings.TryGetValue(def,out types))workMappings[def]=types=new HashSet<WorkTypeDef>();
+                    if(!mappings.TryGetValue(def,out types))mappings[def]=types=new HashSet<WorkTypeDef>();
                     types.Add(giver.workType);
                 }
             }
+            // Unfinished products are found through their defs instead of scanning every Thing.
+            unfinishedDefs=DefDatabase<ThingDef>.AllDefsListForReading
+                .Where(d=>d.thingClass!=null&&typeof(UnfinishedThing).IsAssignableFrom(d.thingClass)).ToList();
+            workMappings=mappings;
         }
 
-        public TaskAuditComponent(Map map) : base(map) { }
+        static Predicate<Job> DesignationMatcher(DesignationDef def)
+        {
+            Predicate<Job> matcher;
+            if(designationMatchers.TryGetValue(def,out matcher))return matcher;
+            if(def.defName=="HarvestPlant")matcher=j=>j.def==JobDefOf.Harvest||j.def==JobDefOf.HarvestDesignated;
+            else if(def.defName=="CutPlant")matcher=j=>j.def==JobDefOf.CutPlant||j.def==JobDefOf.CutPlantDesignated;
+            else
+            {
+                // Vanilla designations share their defName with the job that performs them
+                // (Mine, Deconstruct, Uninstall, Hunt, Tame, Slaughter, SmoothFloor, ...).
+                // Unknown designations never count as worked: activity stays unknown.
+                JobDef jobDef=DefDatabase<JobDef>.GetNamedSilentFail(def.defName);
+                matcher=jobDef==null?(Predicate<Job>)(j=>false):j=>j.def==jobDef;
+            }
+            designationMatchers[def]=matcher;
+            return matcher;
+        }
+        static readonly Predicate<Job> ConstructionMatcher=j=>j.def==JobDefOf.FinishFrame||j.def==JobDefOf.HaulToContainer||j.def==JobDefOf.PlaceNoCostFrame;
+        static readonly Predicate<Job> UnfinishedMatcher=j=>j.def==JobDefOf.DoBill;
+        static readonly Predicate<Job> SowMatcher=j=>j.def==JobDefOf.Sow;
+        static readonly Predicate<Job> HarvestMatcher=j=>j.def==JobDefOf.Harvest;
+        static Predicate<Job> GatherMatcher(CompHasGatherableBodyResource comp,int gatherComps)
+        {
+            if(comp is CompMilkable)return j=>j.def==JobDefOf.Milk;
+            if(comp is CompShearable)return j=>j.def==JobDefOf.Shear;
+            // A modded gathering job cannot be tied to a specific resource; accept it only
+            // when the animal has a single gatherable resource.
+            if(gatherComps!=1)return j=>false;
+            return j=>j.def.driverClass!=null&&typeof(JobDriver_GatherAnimalBodyResources).IsAssignableFrom(j.def.driverClass);
+        }
+
         public override void ExposeData()
         {
             base.ExposeData();
@@ -177,60 +287,97 @@ namespace Pengin.ColonyTaskAuditor
             {
                 PartialScan = true;
                 // Do not publish a partly mutated snapshot after a mod/API failure.
-                Log.Warning("Colony Task Auditor scan incomplete: " + e.GetType().Name);
+                Warn("scan", e);
             }
             finally { ScanMilliseconds = timer.Elapsed.TotalMilliseconds; }
         }
-        private void Diagnose(AuditRecord r, Thing target, IntVec3 cell, WorkTypeDef work, Bill bill, bool paused)
+        void Warn(string where, Exception e)
+        {
+            if(warned.Add(where+":"+e.GetType().FullName))
+                Log.Warning("Colony Task Auditor skipped "+where+": "+e.GetType().Name+" "+e.Message);
+        }
+
+        static int SkillLevel(Pawn p, SkillDef skill)
+        {
+            if(p.IsColonyMechPlayerControlled)
+            {
+                // Mechanoids work at a fixed skill level for their enabled work types.
+                var types=p.RaceProps.mechEnabledWorkTypes;
+                return types!=null&&types.Any(w=>w.relevantSkills!=null&&w.relevantSkills.Contains(skill))?p.RaceProps.mechFixedSkillLevel:0;
+            }
+            return p.skills==null?0:p.skills.GetSkill(skill).Level;
+        }
+
+        private bool IsWorked(TaskContext ctx)
+        {
+            if(ctx.Bench!=null)return activeBills.Contains(ctx.Bill);
+            if(ctx.Matches==null)return false;
+            if(ctx.Zone!=null)
+                return activeJobs.Any(j=>ctx.Matches(j)&&j.targetA.IsValid&&map.zoneManager.ZoneAt(j.targetA.Cell)==ctx.Zone);
+            List<Job> jobs;
+            if(ctx.Target!=null&&jobsByThing.TryGetValue(ctx.Target,out jobs)&&jobs.Any(j=>ctx.Matches(j)))return true;
+            return ctx.Target==null&&ctx.Cell.IsValid&&jobsByCell.TryGetValue(ctx.Cell,out jobs)&&jobs.Any(j=>ctx.Matches(j));
+        }
+
+        private TaskState Diagnose(AuditRecord r, TaskContext ctx)
         {
             r.Reason = "CTA_Unknown"; r.Confidence = "CTA_Uncertain";
-            if (paused) { r.Reason = "CTA_Paused"; r.Confidence = "CTA_Confirmed"; return; }
+            Thing target=ctx.Target; Bill bill=ctx.Bill; WorkTypeDef work=ctx.Work;
+            if (ctx.PausedReason != null) { r.Reason = ctx.PausedReason; r.Confidence = "CTA_Confirmed"; return TaskState.Paused; }
+            // Forbidding is a deliberate player action (e.g. deferring a blueprint): shown, not aged.
             if (target != null && target.IsForbidden(Faction.OfPlayer))
-            { r.Reason = "CTA_Forbidden"; r.Confidence = "CTA_Confirmed"; return; }
+            { r.Reason = "CTA_Forbidden"; r.Confidence = "CTA_Confirmed"; return TaskState.Paused; }
+            // Nobody on this map (caravan, expedition): workers exist elsewhere, so wait.
+            if (workers.Count == 0) { r.Reason = "CTA_NoWorkersOnMap"; r.Confidence = "CTA_Uncertain"; return TaskState.Hold; }
             if(bill!=null&&work==null)work=bill.recipe.requiredGiverWorkType;
             HashSet<WorkTypeDef> applicable=null;
             if(bill!=null&&work==null&&target!=null)workMappings.TryGetValue(target.def,out applicable);
-            var enabled = colonists.Where(p => p.workSettings != null &&
-                (work!=null?p.workSettings.WorkIsActive(work):applicable!=null&&applicable.Count>0?applicable.Any(p.workSettings.WorkIsActive):true)).ToList();
+            // Non-bill tasks only depend on the work type: share the worker lists per scan
+            // instead of rebuilding them for each of possibly thousands of designations.
+            List<Pawn> enabled,cachedAvailable=null;
+            WorkKey key=bill==null?new WorkKey(work):null;
+            if(key!=null&&enabledCache.TryGetValue(key,out enabled))availableCache.TryGetValue(key,out cachedAvailable);
+            else
+            {
+                enabled = workers.Where(p => p.workSettings != null &&
+                    (work!=null?p.workSettings.WorkIsActive(work):applicable!=null&&applicable.Count>0?applicable.Any(p.workSettings.WorkIsActive):true)).ToList();
+                if(key!=null)enabledCache[key]=enabled;
+            }
             if (enabled.Count == 0 && (work != null||applicable!=null&&applicable.Count>0))
-            { r.Reason = "CTA_NoWorker"; r.Confidence = "CTA_Confirmed"; return; }
+            { r.Reason = "CTA_NoWorker"; r.Confidence = "CTA_Confirmed"; return TaskState.Eligible; }
             // Install blueprints carry entityDefToBuild but need neither materials nor build skill.
             BuildableDef construction=target is Frame||target is Blueprint_Build?target.def.entityDefToBuild:null;
-            if(construction!=null&&enabled.Count>0&&!enabled.Any(p=>p.skills!=null&&
-                p.skills.GetSkill(SkillDefOf.Construction).Level>=construction.constructionSkillPrerequisite&&
-                p.skills.GetSkill(SkillDefOf.Artistic).Level>=construction.artisticSkillPrerequisite))
-            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return;}
+            if(construction!=null&&enabled.Count>0&&!enabled.Any(p=>
+                SkillLevel(p,SkillDefOf.Construction)>=construction.constructionSkillPrerequisite&&
+                SkillLevel(p,SkillDefOf.Artistic)>=construction.artisticSkillPrerequisite))
+            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return TaskState.Eligible;}
             if(bill!=null&&bill.recipe.skillRequirements!=null&&enabled.Count>0&&
                 !enabled.Any(p=>bill.recipe.skillRequirements.All(requirement=>requirement.PawnSatisfies(p))))
-            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return;}
+            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return TaskState.Eligible;}
+            if(ctx.Skill!=null&&ctx.MinSkill>0&&enabled.Count>0&&!enabled.Any(p=>SkillLevel(p,ctx.Skill)>=ctx.MinSkill))
+            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return TaskState.Eligible;}
             if (bill != null && enabled.Count > 0 && !enabled.Any(p => bill.PawnAllowedToStartAnew(p)))
-            { r.Reason = "CTA_BillRestriction"; r.Confidence = "CTA_Confirmed"; return; }
-            var available = enabled.Where(p => !p.Drafted && !p.Downed && !p.InMentalState && p.Awake() &&
+            { r.Reason = "CTA_BillRestriction"; r.Confidence = "CTA_Confirmed"; return TaskState.Eligible; }
+            var available = cachedAvailable ?? enabled.Where(p => !p.Drafted && !p.Downed && !p.InMentalState && p.Awake() &&
                 (bill == null || bill.PawnAllowedToStartAnew(p))).ToList();
+            if(key!=null&&cachedAvailable==null)availableCache[key]=available;
             if (available.Count == 0)
-            { r.Reason = "CTA_Waiting"; r.Confidence = "CTA_Uncertain"; return; }
-            // A job on the workbench itself (refuel, repair) is not evidence that this bill is worked.
-            bool working = bill != null ? activeBills.Contains(bill) :
-                (target != null && activeThings.Contains(target)) || activeCells.Contains(cell);
-            if (working) { r.Reason = "CTA_Working"; r.Confidence = "CTA_Confirmed"; return; }
+            { r.Reason = "CTA_Waiting"; r.Confidence = "CTA_Uncertain"; return TaskState.Hold; }
+            if (IsWorked(ctx)) { r.Reason = "CTA_Working"; r.Confidence = "CTA_Confirmed"; return TaskState.Working; }
             if (target != null)
             {
                 string reservation=BlockerEvidence.Reservation(map.reservationManager.IsReserved(target),available.Any(p=>p.CanReserve(target)));
-                if(reservation!=null){r.Reason=reservation;r.Confidence="CTA_Likely";return;}
-                Frame frame=target as Frame;
+                if(reservation!=null){r.Reason=reservation;r.Confidence="CTA_Likely";return TaskState.Eligible;}
                 if(construction!=null)
-                    foreach(ThingDefCountClass cost in frame!=null?frame.TotalMaterialCost():construction.CostListAdjusted(target.Stuff))
-                    {
-                        int needed=frame!=null?frame.ThingCountNeeded(cost.thingDef):cost.count;
-                        if(needed<=0)continue;
-                        int stock;
-                        if(!materialStocks.TryGetValue(cost.thingDef,out stock))
-                        {
-                            stock=map.listerThings.ThingsOfDef(cost.thingDef).Where(t=>t.Spawned&&!t.IsForbidden(Faction.OfPlayer)).Sum(t=>t.stackCount);
-                            materialStocks[cost.thingDef]=stock;
-                        }
-                        r.Reason=BlockerEvidence.Materials(needed,stock);r.Confidence="CTA_Likely";return;
-                    }
+                {
+                    Frame frame=target as Frame;
+                    // Blueprints keep their stuff in stuffToUse (Thing.Stuff is null): use the
+                    // game's own cost list, which applies it, instead of CostListAdjusted(null).
+                    var costs=((IConstructible)target).TotalMaterialCost();
+                    string material=BlockerEvidence.Materials(costs.Select(cost=>new KeyValuePair<int,int>(
+                        frame!=null?frame.ThingCountNeeded(cost.thingDef):cost.count,Stock(cost.thingDef))));
+                    if(material!=null){r.Reason=material;r.Confidence="CTA_Likely";return TaskState.Eligible;}
+                }
             }
             if(bill!=null)
                 foreach(IngredientCount ingredient in bill.recipe.ingredients)
@@ -243,34 +390,96 @@ namespace Pengin.ColonyTaskAuditor
                         if(map.listerThings.ThingsOfDef(def).Any(t=>ingredient.filter.Allows(t)&&bill.ingredientFilter.Allows(t)&&!t.IsForbidden(Faction.OfPlayer)))
                         {any=true;break;}
                     }
-                    if(complete&&!any){r.Reason="CTA_BillMaterials";r.Confidence="CTA_Likely";return;}
+                    if(complete&&!any){r.Reason="CTA_BillMaterials";r.Confidence="CTA_Likely";return TaskState.Eligible;}
                 }
-            if (work == null && bill == null) return; // Unsupported task type: do not guess workers.
+            if(ctx.SowBlocked){r.Reason="CTA_SowBlocked";r.Confidence="CTA_Likely";return TaskState.Eligible;}
+            // Interior cells of a mining area become reachable only after outer rock is mined.
+            if(ctx.MineQueued){r.Reason="CTA_MineQueued";r.Confidence="CTA_Likely";return TaskState.Hold;}
+            if (work == null && bill == null) return TaskState.Eligible; // Unsupported task type: do not guess workers.
+            if (ctx.Zone != null) return TaskState.Eligible; // Zone tasks have no single target to path to.
             bool allChecked = available.Count <= 12;
             foreach (Pawn pawn in available.Take(12))
             {
                 if (pathBudget-- <= 0) { allChecked = false; break; }
-                if (pawn.CanReach(target != null ? new LocalTargetInfo(target) : new LocalTargetInfo(cell),
-                    PathEndMode.Touch, Danger.Deadly)) return;
+                if (pawn.CanReach(target != null ? new LocalTargetInfo(target) : new LocalTargetInfo(ctx.Cell),
+                    PathEndMode.Touch, Danger.Deadly)) return TaskState.Eligible;
             }
             if (allChecked) { r.Reason = "CTA_Unreachable"; r.Confidence = "CTA_Likely"; }
+            return TaskState.Eligible;
         }
+        int Stock(ThingDef def)
+        {
+            int stock;
+            if(!materialStocks.TryGetValue(def,out stock))
+            {
+                stock=map.listerThings.ThingsOfDef(def).Where(t=>t.Spawned&&!t.IsForbidden(Faction.OfPlayer)).Sum(t=>t.stackCount);
+                materialStocks[def]=stock;
+            }
+            return stock;
+        }
+
+        static bool MineCellQueued(IntVec3 cell, Map map)
+        {
+            foreach(IntVec3 offset in GenAdj.AdjacentCells)
+            {
+                IntVec3 next=cell+offset;
+                if(next.InBounds(map)&&next.Standable(map))return false;
+            }
+            return true;
+        }
+
+        static int Windows(int total,int cap){return total<=cap?1:(total+cap-1)/cap;}
+
+        static int ZoneRotationScans(List<Zone_Growing> zones)
+        {
+            int scans=0,i=0;
+            while(i<zones.Count)
+            {
+                int budget=MaxZoneCellsTotal,taken=0;
+                while(i<zones.Count)
+                {
+                    int cost=Math.Min(zones[i].CellCount,MaxObjects);
+                    if(cost>budget&&taken>0)break;
+                    budget-=cost;taken++;i++;
+                }
+                scans++;
+            }
+            return Math.Max(1,scans);
+        }
+
         private void ScanCore()
         {
             AuditorSettings settings = TaskAuditorMod.Settings;
-            BuildWorkMappings();
+            BuildStaticMappings();
             int now = Find.TickManager.TicksGame;
             PartialScan = false;
-            colonists = map.mapPawns.AllPawnsSpawned.Where(p => p.IsColonistPlayerControlled).ToList();
-            activeThings = new HashSet<Thing>(); activeCells = new HashSet<IntVec3>(); activeBills = new HashSet<Bill>();
-            foreach (Pawn p in colonists)
+            int failed=0;
+            workers = map.mapPawns.AllPawnsSpawned.Where(IsWorker).ToList();
+            activeJobs=new List<Job>();jobsByThing=new Dictionary<Thing,List<Job>>();jobsByCell=new Dictionary<IntVec3,List<Job>>();
+            activeBills = new HashSet<Bill>();busyBenches=new HashSet<Thing>();
+            foreach (Pawn p in workers)
             {
-                if (p.CurJob == null) continue;
-                if (p.CurJob.bill != null) activeBills.Add(p.CurJob.bill);
-                foreach (LocalTargetInfo t in new[] {p.CurJob.targetA, p.CurJob.targetB, p.CurJob.targetC})
-                    if (t.IsValid) { activeCells.Add(t.Cell); if (t.HasThing) activeThings.Add(t.Thing); }
+                Job job=p.CurJob;
+                if (job == null) continue;
+                activeJobs.Add(job);
+                if(job.workGiverDef!=null&&job.workGiverDef.workType!=null)recentWorkTypes.Add(job.workGiverDef.workType);
+                if (job.bill != null)
+                {
+                    activeBills.Add(job.bill);
+                    Thing bench=job.bill.billStack==null?null:job.bill.billStack.billGiver as Thing;
+                    if(bench!=null)busyBenches.Add(bench);
+                }
+                foreach (LocalTargetInfo t in new[] {job.targetA, job.targetB, job.targetC})
+                {
+                    if (!t.IsValid) continue;
+                    List<Job> list;
+                    // Thing targets are indexed by identity AND by cell: cell-based orders
+                    // (mining) are performed by jobs that target the Thing on that cell.
+                    if(t.HasThing){if(!jobsByThing.TryGetValue(t.Thing,out list))jobsByThing[t.Thing]=list=new List<Job>();list.Add(job);}
+                    if(!jobsByCell.TryGetValue(t.Cell,out list))jobsByCell[t.Cell]=list=new List<Job>();list.Add(job);
+                }
             }
-            materialStocks=new Dictionary<ThingDef,int>();
+            materialStocks=new Dictionary<ThingDef,int>();enabledCache.Clear();availableCache.Clear();
             ingredientBudget=512;
             pathBudget = 64; // Shared across all tasks, never per task.
             var old = new Dictionary<string, AuditRecord>();
@@ -278,7 +487,7 @@ namespace Pengin.ColonyTaskAuditor
                 if (r != null && !string.IsNullOrEmpty(r.Id) && !old.ContainsKey(r.Id))
                 {
                     var copy = new AuditRecord {Id=r.Id,Category=r.Category,Description=r.Description,FirstSeen=r.FirstSeen,
-                        LastSeen=r.LastSeen,X=r.X,Z=r.Z,Reason=r.Reason,Confidence=r.Confidence};
+                        LastSeen=r.LastSeen,X=r.X,Z=r.Z,Reason=r.Reason,Confidence=r.Confidence,Held=r.Held};
                     var c=r.Clock ?? new ProgressClock();
                     copy.Clock = new ProgressClock {Initialized=c.Initialized,WasEligible=c.WasEligible,Notified=c.Notified,HasProgress=c.HasProgress,
                         FirstSeen=c.FirstSeen,LastSeen=c.LastSeen,LastProgress=c.LastProgress,Started=c.Started,
@@ -286,122 +495,183 @@ namespace Pengin.ColonyTaskAuditor
                     old.Add(copy.Id,copy);
                 }
             var completeCategories=new HashSet<string>(new[]{"designation","bill","grow","unfinished","gather"});
+            var gaps=new Dictionary<string,int>();
             var seen = new HashSet<string>();
             var nextTargets=new Dictionary<Thing,List<AuditRecord>>();
-            Action<string,string,string,IntVec3,float,Thing,WorkTypeDef,Bill,bool> observe =
-                (id,category,label,cell,progress,target,work,bill,paused) =>
+            var nextCells=new Dictionary<IntVec3,List<AuditRecord>>();
+            var nextMatchers=new Dictionary<string,Predicate<Job>>();
+            Action<string,string,string,IntVec3,float,TaskContext,bool> observe =
+                (id,category,label,cell,progress,ctx,increasingOnly) =>
             {
                 if (!seen.Add(id)) return;
                 AuditRecord r;
                 if (!old.TryGetValue(id,out r)) old[id] = r = new AuditRecord {Id=id,FirstSeen=now};
                 r.Category=category; r.Description=label; r.LastSeen=now;
                 if (cell.IsValid) {r.X=cell.x; r.Z=cell.z;}
-                if(target!=null)
+                if(ctx.Target==null&&ctx.Zone==null&&ctx.Bench==null&&ctx.Cell.IsValid)
+                {
+                    List<AuditRecord> atCell;
+                    if(!nextCells.TryGetValue(ctx.Cell,out atCell))nextCells[ctx.Cell]=atCell=new List<AuditRecord>();
+                    atCell.Add(r);
+                }
+                if(ctx.Target!=null&&ctx.Zone==null&&ctx.Bench==null)
                 {
                     List<AuditRecord> associated;
-                    if(!nextTargets.TryGetValue(target,out associated))nextTargets[target]=associated=new List<AuditRecord>();
+                    if(!nextTargets.TryGetValue(ctx.Target,out associated))nextTargets[ctx.Target]=associated=new List<AuditRecord>();
                     associated.Add(r);
                 }
-                Diagnose(r,target,cell,work,bill,paused);
-                bool working = r.Reason == "CTA_Working";
-                bool eligible = r.Reason != "CTA_Paused";
-                // Sleep/draft/combat freezes the clock; it must not erase the episode daily.
-                r.Clock.Observe(now,progress,working,eligible,Interval*2,r.Reason == "CTA_Waiting");
+                nextMatchers[id]=ctx.Matches;
+                TaskState state=Diagnose(r,ctx);
+                // Normal backlog: the same work type (or this workbench) is being worked on
+                // elsewhere, so an untouched entry waits its turn. Confirmed blockers still age.
+                bool backlog=state==TaskState.Eligible&&r.Confidence!="CTA_Confirmed"&&
+                    (ctx.Bench!=null?busyBenches.Contains(ctx.Bench):
+                    (category=="designation"||category=="grow")&&ctx.Work!=null&&recentWorkTypes.Contains(ctx.Work));
+                r.Held=backlog;
+                int gap;
+                if(!gaps.TryGetValue(category,out gap))gap=Interval*2;
+                r.Clock.Observe(now,progress,state==TaskState.Working,state!=TaskState.Paused,gap,
+                    state==TaskState.Hold||backlog,increasingOnly);
+            };
+            Action<string,Action> guard=(category,body)=>
+            {
+                try{body();}
+                catch(Exception e){failed++;completeCategories.Remove(category);PartialScan=true;Warn(category,e);}
             };
             if (settings.Designations)
             {
                 var all=map.designationManager.AllDesignations.ToList();
                 int count=Math.Min(all.Count,MaxDesignations);
-                if (count<all.Count) {PartialScan=true;completeCategories.Remove("designation");}
+                var construction=map.listerThings.ThingsInGroup(ThingRequestGroup.Construction);
+                int constructionCount=Math.Min(construction.Count,MaxDesignations);
+                gaps["designation"]=Interval*(Math.Max(Windows(all.Count,MaxDesignations),Windows(construction.Count,MaxDesignations))+1);
+                if (count<all.Count||constructionCount<construction.Count) {PartialScan=true;completeCategories.Remove("designation");}
                 for (int i=0;i<count;i++)
                 {
                     Designation d=all[(designationOffset+i)%all.Count];
                     if (d == null || d.def == null) continue;
-                    Thing target=d.target.HasThing ? d.target.Thing : null;
-                    WorkTypeDef work=null;
-                    if (d.def.defName == "Mine") work=WorkTypeDefOf.Mining;
-                    if (d.def.defName == "Deconstruct") work=WorkTypeDefOf.Construction;
-                    if (d.def.defName == "HarvestPlant" || d.def.defName == "CutPlant") work=WorkTypeDefOf.PlantCutting;
-                    string designationLabel=string.IsNullOrEmpty(d.def.label)?d.def.defName:d.def.label;
-                    string targetLabel=target!=null?target.LabelShort:d.target.Cell.ToString();
-                    observe("designation:"+d.def.defName+":"+d.target,"designation",designationLabel+" / "+targetLabel,
-                        d.target.Cell,target == null ? 0 : target.HitPoints,target,work,null,false);
+                    guard("designation",()=>
+                    {
+                        Thing target=d.target.HasThing ? d.target.Thing : null;
+                        WorkTypeDef work=null;
+                        if (d.def.defName == "Mine") work=WorkTypeDefOf.Mining;
+                        if (d.def.defName == "Deconstruct") work=WorkTypeDefOf.Construction;
+                        if (d.def.defName == "HarvestPlant" || d.def.defName == "CutPlant") work=WorkTypeDefOf.PlantCutting;
+                        string designationLabel=string.IsNullOrEmpty(d.def.label)?d.def.defName:d.def.label;
+                        string targetLabel=target!=null?target.LabelShort:d.target.Cell.ToString();
+                        var ctx=new TaskContext{Target=target,Cell=d.target.Cell,Work=work,Matches=DesignationMatcher(d.def),
+                            MineQueued=d.def.defName=="Mine"&&target==null&&MineCellQueued(d.target.Cell,map)};
+                        observe("designation:"+d.def.defName+":"+d.target,"designation",designationLabel+" / "+targetLabel,
+                            d.target.Cell,target == null ? 0 : target.HitPoints,ctx,false);
+                    });
                 }
                 designationOffset=all.Count==0 ? 0 : (designationOffset+count)%all.Count;
                 // Blueprints/frames are not designations in vanilla.
-                var construction=map.listerThings.ThingsInGroup(ThingRequestGroup.Construction);
-                int constructionCount=Math.Min(construction.Count,MaxDesignations);
-                if(constructionCount<construction.Count){PartialScan=true;completeCategories.Remove("designation");}
                 for(int i=0;i<constructionCount;i++)
                 {
                     Thing t=construction[(constructionOffset+i)%construction.Count];
                     Frame frame=t as Frame;
-                    if (frame != null || t is Blueprint) observe("construction:"+t.ThingID,"designation",t.LabelShort,t.Position,
-                        frame == null ? 0 : frame.workDone,t,WorkTypeDefOf.Construction,null,false);
+                    if (frame == null && !(t is Blueprint)) continue;
+                    guard("designation",()=>observe("construction:"+t.ThingID,"designation",t.LabelShort,t.Position,
+                        frame == null ? 0 : frame.workDone,new TaskContext{Target=t,Cell=t.Position,Work=WorkTypeDefOf.Construction,Matches=ConstructionMatcher},false));
                 }
                 constructionOffset=construction.Count==0?0:(constructionOffset+constructionCount)%construction.Count;
             }
             if (settings.Bills)
+            {
+                var bills=new List<KeyValuePair<Building,Bill>>();
                 foreach (Building b in map.listerBuildings.allBuildingsColonist)
                 {
                     IBillGiver giver=b as IBillGiver;
                     if (giver == null || giver.BillStack == null) continue;
                     foreach (Bill bill in giver.BillStack.Bills)
-                    {
-                        if (bill == null) continue;
-                        Bill_Production prod=bill as Bill_Production;
-                        bool paused=bill.suspended || !bill.ShouldDoNow() || (prod != null && prod.paused);
-                        observe("bill:"+bill.GetUniqueLoadID(),"bill",b.LabelShort+" / "+bill.Label,b.Position,
-                            prod == null ? 0 : prod.repeatCount,b,null,bill,paused);
-                    }
+                        if (bill != null) bills.Add(new KeyValuePair<Building,Bill>(b,bill));
                 }
-            if (settings.Farming)
-                foreach (Zone_Growing zone in map.zoneManager.AllZones.OfType<Zone_Growing>())
+                int count=Math.Min(bills.Count,MaxBills);
+                gaps["bill"]=Interval*(Windows(bills.Count,MaxBills)+1);
+                if(count<bills.Count){PartialScan=true;completeCategories.Remove("bill");}
+                for(int i=0;i<count;i++)
                 {
-                    if (zone.CellCount==0) continue;
-                    int empty=0,harvest=0,checkedCells=0;
-                    IntVec3 sowCell=IntVec3.Invalid,harvestCell=IntVec3.Invalid;
-                    bool paused=!zone.allowSow || !zone.CanAcceptSowNow();
-                    foreach (IntVec3 cell in zone.Cells)
+                    var entry=bills[(billOffset+i)%bills.Count];
+                    guard("bill",()=>
                     {
-                        if (++checkedCells>MaxObjects) {PartialScan=true;completeCategories.Remove("grow");break;}
-                        Plant plant=cell.GetPlant(map);
-                        if (plant==null&&cell.Standable(map)&&map.fertilityGrid.FertilityAt(cell)>=zone.GetPlantDefToGrow().plant.fertilityMin)
-                        {empty++;if(!sowCell.IsValid)sowCell=cell;}
-                        else if (plant!=null&&plant.HarvestableNow)
-                        {harvest++;if(!harvestCell.IsValid)harvestCell=cell;}
-                    }
-                    if (empty>0) observe("grow:"+zone.ID,"grow",zone.label+" / "+"CTA_Empty".Translate(empty),
-                        sowCell,-empty,null,WorkTypeDefOf.Growing,null,paused);
-                    if (harvest>0) observe("harvest:"+zone.ID,"grow",zone.label+" / "+"CTA_Harvest".Translate(harvest),
-                        harvestCell,-harvest,harvestCell.GetPlant(map),WorkTypeDefOf.Growing,null,!zone.allowCut);
+                        Building b=entry.Key;Bill bill=entry.Value;
+                        Bill_Production prod=bill as Bill_Production;
+                        string paused=bill.suspended || !bill.ShouldDoNow() || (prod != null && prod.paused)?"CTA_Paused":null;
+                        // Autonomous workbenches (mech gestator, ...) run one bill at a time; the
+                        // others cannot start until the active one finishes.
+                        var autonomous=b as Building_WorkTableAutonomous;
+                        if(paused==null&&bill is Bill_Autonomous&&autonomous!=null&&autonomous.ActiveBill!=null&&autonomous.ActiveBill!=bill)paused="CTA_Queued";
+                        observe("bill:"+bill.GetUniqueLoadID(),"bill",b.LabelShort+" / "+bill.Label,b.Position,
+                            prod == null ? 0 : prod.repeatCount,new TaskContext{Target=b,Cell=b.Position,Bill=bill,Bench=b,PausedReason=paused},false);
+                    });
                 }
+                billOffset=bills.Count==0?0:(billOffset+count)%bills.Count;
+            }
+            if (settings.Farming)
+            {
+                var zones=map.zoneManager.AllZones.OfType<Zone_Growing>().Where(z=>z.CellCount>0).ToList();
+                // Decide this scan's window first, so the rotation-aware gap is known before
+                // any zone is observed.
+                int cellBudget=MaxZoneCellsTotal,processed=0;
+                for(int i=0;i<zones.Count;i++)
+                {
+                    int cost=Math.Min(zones[(zoneOffset+i)%zones.Count].CellCount,MaxObjects);
+                    if(cost>cellBudget&&processed>0)break;
+                    cellBudget-=cost;processed++;
+                }
+                if(processed<zones.Count){PartialScan=true;completeCategories.Remove("grow");}
+                // A zone is revisited once the whole list has been rotated through. Count the
+                // scans of one full budgeted rotation (zone sizes differ, so this scan's count
+                // says nothing about the others) and allow one more for the window boundary.
+                gaps["grow"]=Interval*(ZoneRotationScans(zones)+2);
+                for(int i=0;i<processed;i++)
+                {
+                    Zone_Growing zone=zones[(zoneOffset+i)%zones.Count];
+                    guard("grow",()=>ObserveZone(zone,observe,completeCategories));
+                }
+                zoneOffset=zones.Count==0?0:(zoneOffset+processed)%zones.Count;
+            }
             if (settings.Unfinished)
             {
-                var all=map.listerThings.AllThings;
+                var all=new List<Thing>();
+                foreach(ThingDef def in unfinishedDefs)all.AddRange(map.listerThings.ThingsOfDef(def));
                 int count=Math.Min(all.Count,MaxObjects);
+                gaps["unfinished"]=Interval*(Windows(all.Count,MaxObjects)+1);
                 if (count<all.Count) {PartialScan=true;completeCategories.Remove("unfinished");}
                 for(int i=0;i<count;i++)
                 {
                     UnfinishedThing t=all[(objectOffset+i)%all.Count] as UnfinishedThing;
                     if(t==null) continue;
-                    observe("unfinished:"+t.ThingID,"unfinished",t.LabelShort,t.Position,-t.workLeft,t,null,t.BoundBill,
-                        t.BoundBill!=null && (t.BoundBill.suspended || !t.BoundBill.ShouldDoNow()));
+                    guard("unfinished",()=>observe("unfinished:"+t.ThingID,"unfinished",t.LabelShort,t.Position,-t.workLeft,
+                        new TaskContext{Target=t,Cell=t.Position,Bill=t.BoundBill,Matches=UnfinishedMatcher,
+                            PausedReason=t.BoundBill!=null && (t.BoundBill.suspended || !t.BoundBill.ShouldDoNow())?"CTA_Paused":null},false));
                 }
                 objectOffset=all.Count==0 ? 0 : (objectOffset+count)%all.Count;
             }
             if (settings.Gathering)
-                foreach (Pawn pawn in map.mapPawns.AllPawnsSpawned)
+            {
+                var animals=map.mapPawns.SpawnedColonyAnimals;
+                int count=Math.Min(animals.Count,MaxAnimals);
+                gaps["gather"]=Interval*(Windows(animals.Count,MaxAnimals)+1);
+                if(count<animals.Count){PartialScan=true;completeCategories.Remove("gather");}
+                for(int i=0;i<count;i++)
                 {
-                    if (!pawn.IsColonyAnimal) continue;
-                    foreach (CompHasGatherableBodyResource comp in pawn.AllComps.OfType<CompHasGatherableBodyResource>())
-                        if (comp.ActiveAndFull) observe("gather:"+pawn.ThingID+":"+comp.GetType().FullName,"gather",
-                            pawn.LabelShort,pawn.Position,comp.Fullness,pawn,WorkTypeDefOf.Handling,null,false);
+                    Pawn pawn=animals[(animalOffset+i)%animals.Count];
+                    guard("gather",()=>
+                    {
+                        var comps=pawn.AllComps.OfType<CompHasGatherableBodyResource>().ToList();
+                        foreach (CompHasGatherableBodyResource comp in comps)
+                            if (comp.ActiveAndFull) observe("gather:"+pawn.ThingID+":"+comp.GetType().FullName,"gather",
+                                pawn.LabelShort,pawn.Position,comp.Fullness,
+                                new TaskContext{Target=pawn,Cell=pawn.Position,Work=WorkTypeDefOf.Handling,Matches=GatherMatcher(comp,comps.Count)},false);
+                    });
                 }
-            // A capped scan cannot prove absence. Retain unseen records, but reset their
-            // eligibility so stale diagnostics cannot produce alerts.
-            foreach (AuditRecord r in old.Values)
-                if (!seen.Contains(r.Id) && PartialScan) {r.Clock.WasEligible=false;r.Clock.EligibleTicks=0;}
+                animalOffset=animals.Count==0?0:(animalOffset+count)%animals.Count;
+            }
+            // A capped or failed scan cannot prove absence: unseen records keep their clocks.
+            // The rotation-aware gap lets them age across windows only between two eligible,
+            // unchanged observations; they never alert until observed again.
             records=old.Values.Where(r=>seen.Contains(r.Id)||!completeCategories.Contains(r.Category))
                 .OrderBy(r=>r.Category).ThenBy(r=>r.FirstSeen).ToList();
             // Disabling a monitor removes its historical state even when another category is capped.
@@ -410,84 +680,51 @@ namespace Pengin.ColonyTaskAuditor
                 (r.Category=="unfinished"&&!settings.Unfinished) || (r.Category=="gather"&&!settings.Gathering));
             recordLookup=records.ToDictionary(r=>r.Id);
             targetRecords=nextTargets;
+            cellRecords=nextCells;
+            matchers=nextMatchers;
             foreach(string key in liveProgress.Keys.Where(k=>!recordLookup.ContainsKey(k)).ToList())liveProgress.Remove(key);
+            recentWorkTypes.Clear();
+            FailedItems=failed;
+            int threshold=Math.Max(1,settings.WarningDays)*60000;
             int alerts=0;
             foreach(AuditRecord r in records)
-                if (seen.Contains(r.Id) && r.Clock.IsStalled(Math.Max(1,settings.WarningDays)*60000) &&
+                if (seen.Contains(r.Id) && r.Clock.IsStalled(threshold) &&
                     r.Confidence=="CTA_Confirmed" && !r.Clock.Notified && settings.Notifications)
                 {r.Clock.Notified=true;alerts++;}
             if(alerts>0) Messages.Message("CTA_Notification".Translate(alerts),MessageTypeDefOf.NegativeEvent,false);
+            Overdue=records.Where(r=>seen.Contains(r.Id)&&r.Clock.ReachedThreshold(threshold)).ToList();
             LastScanTick=now;
         }
-    }
 
-    public sealed class TaskAuditorMod : Mod
-    {
-        public static AuditorSettings Settings;
-        private Vector2 scroll;
-        private int filter;
-        private static readonly string[] categories = {"all","designation","bill","grow","unfinished","gather"};
-        public TaskAuditorMod(ModContentPack pack) : base(pack)
+        private void ObserveZone(Zone_Growing zone,Action<string,string,string,IntVec3,float,TaskContext,bool> observe,HashSet<string> completeCategories)
         {
-            Settings = GetSettings<AuditorSettings>();
-            BillProgressHooks.Install();
-        }
-        public override string SettingsCategory() { return "Colony Task Auditor"; }
-        public override void DoSettingsWindowContents(Rect rect)
-        {
-            var list = new Listing_Standard();
-            list.Begin(new Rect(rect.x, rect.y, rect.width, 287f));
-            list.Label("CTA_Description".Translate());
-            if(!BillProgressHooks.Available)list.Label("CTA_ProgressHookUnavailable".Translate());
-            list.Label("CTA_Threshold".Translate(Settings.WarningDays));
-            Settings.WarningDays = (int)list.Slider(Settings.WarningDays, 1, 10);
-            list.CheckboxLabeled("CTA_Designations".Translate(), ref Settings.Designations);
-            list.CheckboxLabeled("CTA_Bills".Translate(), ref Settings.Bills);
-            list.CheckboxLabeled("CTA_Growing".Translate(), ref Settings.Farming);
-            list.CheckboxLabeled("CTA_Unfinished".Translate(), ref Settings.Unfinished);
-            list.CheckboxLabeled("CTA_Gathering".Translate(), ref Settings.Gathering);
-            list.CheckboxLabeled("CTA_Notifications".Translate(), ref Settings.Notifications);
-            list.End();
-
-            Map current = Find.CurrentMap;
-            if (current == null) return;
-            TaskAuditComponent audit = current.GetComponent<TaskAuditComponent>();
-            if (audit == null) return;
-            if (Widgets.ButtonText(new Rect(rect.x, rect.y + 296, 165, 30), "CTA_Rescan".Translate()))
-                audit.Scan();
-            if (Widgets.ButtonText(new Rect(rect.x+rect.width-155,rect.y+296,150,30), ("CTA_Filter"+categories[filter]).Translate()))
-                filter=(filter+1)%categories.Length;
-            int now = Find.TickManager.TicksGame;
-            int threshold = Settings.WarningDays * 60000;
-            int overdueCount = audit.Records.Count(r => r.Clock.ReachedThreshold(threshold));
-            Widgets.Label(new Rect(rect.x + 170, rect.y + 299, Math.Max(50f,rect.width - 335), 28),
-                "CTA_Count".Translate(audit.Records.Count, overdueCount));
-
-            // Overdue items are sorted first so users see urgent issues without paging.
-            List<AuditRecord> display = audit.Records.Where(r=>filter==0 || r.Category==categories[filter])
-                .OrderBy(r => !r.Clock.ReachedThreshold(threshold))
-                .ThenBy(r => r.FirstSeen).ToList();
-            Rect viewport = new Rect(rect.x, rect.y + 337, rect.width, Math.Max(75f, rect.height - 340f));
-            Rect content = new Rect(0, 0, Math.Max(100f, viewport.width - 20), Math.Max(viewport.height, display.Count * 108f));
-            Widgets.BeginScrollView(viewport, ref scroll, content);
-            for (int i = 0; i < display.Count; i++)
+            int empty=0,blocked=0,harvest=0,checkedCells=0;
+            IntVec3 sowCell=IntVec3.Invalid,harvestCell=IntVec3.Invalid;
+            ThingDef plantDef=zone.GetPlantDefToGrow();
+            if(plantDef==null||plantDef.plant==null)return;
+            bool paused=!zone.allowSow || !zone.CanAcceptSowNow();
+            foreach (IntVec3 cell in zone.Cells)
             {
-                if(i*108f+108<scroll.y||i*108f>scroll.y+viewport.height)continue;
-                AuditRecord item = display[i];
-                bool overdue = item.Clock.ReachedThreshold(threshold);
-                Widgets.Label(new Rect(0, i * 108f, content.width - 80f, 105f),
-                    (overdue ? "CTA_Overdue".Translate() : "CTA_Watching".Translate()) +
-                    " [" + ("CTA_Filter"+item.Category).Translate() + "] " + item.Description + "\n" +
-                    "CTA_Days".Translate((item.Clock.EligibleTicks / 60000f).ToString("0.0")) + " / " + item.Reason.Translate() + " (" + item.Confidence.Translate() + ")" + "\n" +
-                    "CTA_Timing".Translate(item.FirstSeen,item.Clock.Started<0?"—":item.Clock.Started.ToString(),item.Clock.HasProgress?item.Clock.LastProgress.ToString():"—"));
-                if (item.X >= 0 &&
-                    Widgets.ButtonText(new Rect(content.width - 76f, i * 108f + 5, 73f, 28f), "CTA_Jump".Translate()))
-                    CameraJumper.TryJump(new IntVec3(item.X, 0, item.Z), current);
+                if (++checkedCells>MaxObjects) {PartialScan=true;completeCategories.Remove("grow");break;}
+                Plant plant=cell.GetPlant(map);
+                if (plant==null&&cell.Standable(map)&&map.fertilityGrid.FertilityAt(cell)>=plantDef.plant.fertilityMin)
+                {
+                    empty++;
+                    if(cell.GetFirstItem(map)!=null)blocked++;
+                    else if(!sowCell.IsValid)sowCell=cell;
+                }
+                else if (plant!=null&&plant.HarvestableNow)
+                {harvest++;if(!harvestCell.IsValid)harvestCell=cell;}
             }
-            Widgets.EndScrollView();
-            if (audit.PartialScan)
-                Widgets.Label(new Rect(rect.x, rect.y + rect.height - 24, rect.width, 22), "CTA_Partial".Translate());
+            if(!sowCell.IsValid&&empty>0)sowCell=zone.Cells[0];
+            // Pending counts are encoded as -count: only a decrease of pending work is progress.
+            if (empty>0) observe("grow:"+zone.ID,"grow",zone.label+" / "+"CTA_Empty".Translate(empty)+(blocked>0?" "+"CTA_EmptyBlocked".Translate(blocked).ToString():""),
+                sowCell,-empty,new TaskContext{Cell=sowCell,Zone=zone,Work=WorkTypeDefOf.Growing,Matches=SowMatcher,
+                    PausedReason=paused?"CTA_Paused":null,Skill=SkillDefOf.Plants,MinSkill=plantDef.plant.sowMinSkill,
+                    SowBlocked=blocked==empty},true);
+            if (harvest>0) observe("harvest:"+zone.ID,"grow",zone.label+" / "+"CTA_Harvest".Translate(harvest),
+                harvestCell,-harvest,new TaskContext{Target=harvestCell.GetPlant(map),Cell=harvestCell,Zone=zone,Work=WorkTypeDefOf.Growing,
+                    Matches=HarvestMatcher,PausedReason=!zone.allowCut?"CTA_Paused":null},true);
         }
     }
 }
-

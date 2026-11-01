@@ -93,3 +93,57 @@ Checks performed:
 - `Bill_ProductionWithUft.Notify_IterationCompleted` calls the base `Bill_Production` method (IL), so the completion postfix also covers UFT bills.
 
 Still unverified, and not claimed: normal populated gameplay, actual Harmony patch application in the running game, full-map save/load and removal, large-map scan timing/TPS, and compatibility with large mod lists. The earlier A-level and 12,000-tick evidence was produced on earlier DLL bytes.
+
+## v1.0.1 (2026-11-01)
+
+### Issues resolved
+
+| Issue | Change |
+|---|---|
+| #8 | All construction costs are inspected; any shortage outranks "not yet delivered", independent of material order. |
+| #9 | Capped categories rotate through their entries. Unseen records keep their clocks instead of being reset; the allowed observation gap is widened by the number of rotation windows. |
+| #10 | Crop and empty-cell counts use an increasing-only progress mode: more pending work is not progress. |
+| #11 | Activity is matched to the job that performs the task (designation job, FinishFrame/HaulToContainer/PlaceNoCostFrame, DoBill, Sow, Harvest, Milk/Shear by resource). |
+| #12 | Per-scan budgets and rotating cursors for bills (1,500), zone cells (40,000 in total) and animals (1,000). Unfinished products are found by def instead of scanning every Thing. |
+| #13 | Japanese and English About.xml descriptions carry the same scope. |
+| #14 | Player mechanoids count as workers; mechanoid skill uses `mechFixedSkillLevel`, as vanilla `SkillRequirement` does. |
+| #16 | Backlog hold: untouched entries wait without ageing while the same work type (or workbench) is busy elsewhere, unless the cause is confirmed. Interior mining cells are labeled and held. |
+| #17 | Each scanned entry is isolated; failures are skipped, counted, shown and warned once per category and exception type. |
+| #18 | Player-forbidden targets are treated as an intentional pause. |
+| #19 | Jumping from the settings list closes the settings dialog. A non-modal list window was added. |
+| #20 | No workers on the map pauses judgement instead of reporting "no worker (confirmed)". |
+| #21 | Bills queued behind the active bill of an autonomous workbench are treated as paused. |
+| #22 | Sowing diagnosis checks the plant's `sowMinSkill` and cells blocked by items. |
+
+Also added: a standard alert for stalled tasks that opens the list window, and an alert on/off setting.
+
+### Found by the in-game probe and fixed
+
+For a Blueprint_Build, `Thing.Stuff` is null (the stuff lives in `stuffToUse`). The material check called `CostListAdjusted(null)`, which logged "Cannot get AdjustedCostList for Wall with null Stuff." on every scan for every stuffable blueprint. This was present since v1.0.0. The check now uses `IConstructible.TotalMaterialCost()`.
+
+### Optimisation
+
+- Non-bill tasks share per-scan worker lists keyed by work type.
+- The list UI rebuilds its sorted view only when the scan, filter or threshold changes.
+
+### Checks performed
+
+- 29 model assertions pass, including increasing-only clocks, holds and multi-material evidence.
+- `validate_package.py` passes (57 keys).
+- Release build has 0 warnings and 0 errors against the exact private 1.7.4985 rev1269 DLLs, and also against `Krafs.Rimworld.Ref`.
+- Static reference check: 220 members and 114 types matched, 0 mismatches. Unverified references are BCL only.
+- Real game, Linux WaylithClr 1.7.4985 rev1269, private host `RimWorld-for-mod-test`. The probe mod is private and was not published.
+  - **A+B (Japanese, with Harmony 2009463077): passed.** The postfix `BillProgressHooks.Completed` is registered on `Bill_Production.Notify_IterationCompleted`, and no new errors or warnings appeared.
+  - **D bounded tick (2,400 ticks, Crashlanded, generated map): D stage completed. Overall status is incomplete (`dNotQualified`, `mapNotQualified`), as the host always reports.** A plasteel-wall blueprint with no plasteel on the map was diagnosed `CTA_MaterialMissing`. The probe called scans 300 ticks apart:
+    - while workers were available, eligible time rose 300 → 600;
+    - with every colonist drafted, the reason was `CTA_Waiting` and eligible time stayed 600 (held, not reset);
+    - after undrafting it stayed 600 for the wake-up interval and then rose to 900.
+    - No new errors appeared during ticks.
+  - `Alert_TaskAuditOverdue.GetReport()` and `Window_TaskAudit` construct without exceptions in the real game.
+
+Still unverified: long normal gameplay, sleep (it uses the same hold path as drafting but was not driven directly), mechanoid workers, full-map save/load and removal, rendering of the alert and window, large-map scan time/TPS and large mod lists.
+
+Review follow-up (PR #23):
+- Growing zones: the rotation window is decided before any zone is observed. The allowed gap is derived from the number of scans of one full budgeted rotation plus a boundary margin, not from this scan's count, so zones of different sizes are covered.
+- The alert rechecks each cached overdue record against its current clock, so tasks that resumed since the scan are not reported. The map switch uses the same check.
+- Thing-targeted jobs are also indexed by cell, and the 250-tick sampler matches cell-based orders. Re-running the bounded real-game probe with a mining designation next to a miner: the record was `CTA_Working` with a first-work tick at 1000 and 1300, `CTA_Waiting` while drafted, and `CTA_Working` again after undrafting. The other probe results were unchanged.

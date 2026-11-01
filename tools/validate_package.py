@@ -13,7 +13,7 @@ assert metadata.findtext("supportedVersions/li") == "1.7"
 proj = ET.parse(root / "Source/ColonyTaskAuditor.csproj").getroot()
 assert proj.findtext(".//TargetFramework") == "net10.0"
 assert any(p.attrib.get("Include") == "Krafs.Rimworld.Ref" for p in proj.findall(".//PackageReference"))
-source = (root / "Source/ColonyTaskAuditor.cs").read_text(encoding="utf-8")
+source = (root / "Source/TaskAuditor.cs").read_text(encoding="utf-8")
 assert source.count("{") == source.count("}"), "Brace count mismatch (not a compiler check)"
 assert "ModSettings" in source and "MapComponent" in source
 used = set(re.findall(r'"(CTA_[A-Za-z0-9]+)"[.]Translate[(]', source))

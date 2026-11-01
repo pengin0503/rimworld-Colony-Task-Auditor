@@ -107,6 +107,7 @@ namespace Pengin.ColonyTaskAuditor
         private Dictionary<string,AuditRecord> recordLookup = new Dictionary<string,AuditRecord>();
         private bool needsInitialScan = true;
         private Dictionary<Thing,List<AuditRecord>> targetRecords = new Dictionary<Thing,List<AuditRecord>>();
+        private Dictionary<IntVec3,List<AuditRecord>> cellRecords = new Dictionary<IntVec3,List<AuditRecord>>();
         private Dictionary<string,Predicate<Job>> matchers = new Dictionary<string,Predicate<Job>>();
         private Dictionary<string,float> liveProgress = new Dictionary<string,float>();
         private HashSet<string> warned = new HashSet<string>();
@@ -179,6 +180,14 @@ namespace Pengin.ColonyTaskAuditor
                 }
                 foreach(LocalTargetInfo target in new[]{job.targetA,job.targetB,job.targetC})
                 {
+                    if(!target.IsValid)continue;
+                    List<AuditRecord> cellMatches;
+                    if(cellRecords.TryGetValue(target.Cell,out cellMatches))
+                        foreach(AuditRecord match in cellMatches)
+                        {
+                            Predicate<Job> cellMatcher;
+                            if(matchers.TryGetValue(match.Id,out cellMatcher)&&cellMatcher!=null&&cellMatcher(job))MarkWorking(match,now);
+                        }
                     if(!target.HasThing)continue;
                     List<AuditRecord> matches;
                     if(!targetRecords.TryGetValue(target.Thing,out matches))continue;
@@ -447,8 +456,10 @@ namespace Pengin.ColonyTaskAuditor
                 {
                     if (!t.IsValid) continue;
                     List<Job> list;
+                    // Thing targets are indexed by identity AND by cell: cell-based orders
+                    // (mining) are performed by jobs that target the Thing on that cell.
                     if(t.HasThing){if(!jobsByThing.TryGetValue(t.Thing,out list))jobsByThing[t.Thing]=list=new List<Job>();list.Add(job);}
-                    else{if(!jobsByCell.TryGetValue(t.Cell,out list))jobsByCell[t.Cell]=list=new List<Job>();list.Add(job);}
+                    if(!jobsByCell.TryGetValue(t.Cell,out list))jobsByCell[t.Cell]=list=new List<Job>();list.Add(job);
                 }
             }
             materialStocks=new Dictionary<ThingDef,int>();enabledCache.Clear();availableCache.Clear();
@@ -470,6 +481,7 @@ namespace Pengin.ColonyTaskAuditor
             var gaps=new Dictionary<string,int>();
             var seen = new HashSet<string>();
             var nextTargets=new Dictionary<Thing,List<AuditRecord>>();
+            var nextCells=new Dictionary<IntVec3,List<AuditRecord>>();
             var nextMatchers=new Dictionary<string,Predicate<Job>>();
             Action<string,string,string,IntVec3,float,TaskContext,bool> observe =
                 (id,category,label,cell,progress,ctx,increasingOnly) =>
@@ -479,6 +491,12 @@ namespace Pengin.ColonyTaskAuditor
                 if (!old.TryGetValue(id,out r)) old[id] = r = new AuditRecord {Id=id,FirstSeen=now};
                 r.Category=category; r.Description=label; r.LastSeen=now;
                 if (cell.IsValid) {r.X=cell.x; r.Z=cell.z;}
+                if(ctx.Target==null&&ctx.Zone==null&&ctx.Bench==null&&ctx.Cell.IsValid)
+                {
+                    List<AuditRecord> atCell;
+                    if(!nextCells.TryGetValue(ctx.Cell,out atCell))nextCells[ctx.Cell]=atCell=new List<AuditRecord>();
+                    atCell.Add(r);
+                }
                 if(ctx.Target!=null&&ctx.Zone==null&&ctx.Bench==null)
                 {
                     List<AuditRecord> associated;
@@ -576,16 +594,22 @@ namespace Pengin.ColonyTaskAuditor
             if (settings.Farming)
             {
                 var zones=map.zoneManager.AllZones.OfType<Zone_Growing>().Where(z=>z.CellCount>0).ToList();
+                // Decide this scan's window first, so the rotation-aware gap is known before
+                // any zone is observed.
                 int cellBudget=MaxZoneCellsTotal,processed=0;
                 for(int i=0;i<zones.Count;i++)
                 {
-                    Zone_Growing zone=zones[(zoneOffset+i)%zones.Count];
-                    int cost=Math.Min(zone.CellCount,MaxObjects);
-                    if(cost>cellBudget&&processed>0){PartialScan=true;completeCategories.Remove("grow");break;}
+                    int cost=Math.Min(zones[(zoneOffset+i)%zones.Count].CellCount,MaxObjects);
+                    if(cost>cellBudget&&processed>0)break;
                     cellBudget-=cost;processed++;
+                }
+                if(processed<zones.Count){PartialScan=true;completeCategories.Remove("grow");}
+                gaps["grow"]=Interval*(Windows(zones.Count,Math.Max(1,processed))+1);
+                for(int i=0;i<processed;i++)
+                {
+                    Zone_Growing zone=zones[(zoneOffset+i)%zones.Count];
                     guard("grow",()=>ObserveZone(zone,observe,completeCategories));
                 }
-                gaps["grow"]=Interval*(Windows(zones.Count,Math.Max(1,processed))+1);
                 zoneOffset=zones.Count==0?0:(zoneOffset+processed)%zones.Count;
             }
             if (settings.Unfinished)
@@ -636,6 +660,7 @@ namespace Pengin.ColonyTaskAuditor
                 (r.Category=="unfinished"&&!settings.Unfinished) || (r.Category=="gather"&&!settings.Gathering));
             recordLookup=records.ToDictionary(r=>r.Id);
             targetRecords=nextTargets;
+            cellRecords=nextCells;
             matchers=nextMatchers;
             foreach(string key in liveProgress.Keys.Where(k=>!recordLookup.ContainsKey(k)).ToList())liveProgress.Remove(key);
             recentWorkTypes.Clear();

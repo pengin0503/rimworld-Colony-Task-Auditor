@@ -105,8 +105,11 @@ namespace Pengin.ColonyTaskAuditor
             {
                 TaskAuditComponent audit=map.GetComponent<TaskAuditComponent>();
                 if(audit==null)continue;
+                int threshold=TaskAuditorMod.Settings.WarningDays*60000;
                 foreach(AuditRecord r in audit.Overdue)
                 {
+                    // The cache is from the last scan; work may have resumed since.
+                    if(!r.Clock.ReachedThreshold(threshold))continue;
                     overdue.Add(r);
                     if(r.X>=0&&culprits.Count<50)culprits.Add(new GlobalTargetInfo(new IntVec3(r.X,0,r.Z),map));
                 }
@@ -133,9 +136,10 @@ namespace Pengin.ColonyTaskAuditor
                 // The window lists the current map: switch to a map with overdue tasks first.
                 Map current=Find.CurrentMap;
                 TaskAuditComponent here=current==null?null:current.GetComponent<TaskAuditComponent>();
-                if(here==null||here.Overdue.Count==0)
+                int limit=TaskAuditorMod.Settings.WarningDays*60000;
+                if(here==null||!here.Overdue.Any(r=>r.Clock.ReachedThreshold(limit)))
                 {
-                    Map other=Find.Maps.FirstOrDefault(m=>{var a=m.GetComponent<TaskAuditComponent>();return a!=null&&a.Overdue.Count>0;});
+                    Map other=Find.Maps.FirstOrDefault(m=>{var a=m.GetComponent<TaskAuditComponent>();return a!=null&&a.Overdue.Any(r=>r.Clock.ReachedThreshold(limit));});
                     if(other!=null)CameraJumper.TryJump(other.Center,other);
                 }
                 Find.WindowStack.Add(new Window_TaskAudit());

@@ -21,6 +21,7 @@ used |= {"CTA_"+k for k in ("Unknown","Confirmed","Likely","Uncertain","Paused",
 used |= {"CTA_Filter"+k for k in ("all","designation","bill","grow","unfinished","gather")}
 used |= {"CTA_MaterialMissing","CTA_MaterialDelivery","CTA_Reserved"}
 used |= {"CTA_Skill","CTA_BillMaterials"}
+used |= {"CTA_Queued","CTA_MineQueued","CTA_SowBlocked","CTA_NoWorkersOnMap"}
 languages = []
 for language in ("English", "Japanese"):
     data = ET.parse(root / "Languages" / language / "Keyed/Strings.xml").getroot()

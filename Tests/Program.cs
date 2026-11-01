@@ -55,6 +55,21 @@ static class Program
         Check(night.EligibleTicks==0 && night.LastProgress==70 && !night.Notified, "progress during hold still counts as progress");
         night.Observe(80,1,false,true,20); night.Observe(999,1,false,true,20,true);
         Check(night.EligibleTicks==0, "long gap during hold resets uncertain time");
+        var pending=new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<int,int>>{
+            new System.Collections.Generic.KeyValuePair<int,int>(50,200),new System.Collections.Generic.KeyValuePair<int,int>(4,0)};
+        Check(BlockerEvidence.Materials(pending)=="CTA_MaterialMissing","later missing material outranks earlier delivery");
+        pending.Reverse();
+        Check(BlockerEvidence.Materials(pending)=="CTA_MaterialMissing","material order does not change the diagnosis");
+        Check(BlockerEvidence.Materials(new[]{new System.Collections.Generic.KeyValuePair<int,int>(5,9)})=="CTA_MaterialDelivery","complete stock is delivery-limited");
+        Check(BlockerEvidence.Materials(new[]{new System.Collections.Generic.KeyValuePair<int,int>(0,0)})==null,"nothing pending is no material blocker");
+        var crop=new ProgressClock();
+        crop.Observe(0,-3,false,true,20,false,true);crop.Observe(10,-3,false,true,20,false,true);
+        crop.Observe(20,-4,false,true,20,false,true);
+        Check(crop.EligibleTicks==20&&!crop.HasProgress,"more ripe crops are new work, not progress");
+        crop.Observe(30,-3,false,true,20,false,true);
+        Check(crop.EligibleTicks==0&&crop.HasProgress&&crop.LastProgress==30,"a harvested crop is progress");
+        crop.Observe(40,-6,false,true,20,true,true);
+        Check(crop.Progress==-6&&crop.EligibleTicks==0,"hold follows a growing backlog without aging");
         var timer=System.Diagnostics.Stopwatch.StartNew();
         var many=new ProgressClock[2000];
         for(int i=0;i<many.Length;i++) many[i]=new ProgressClock();

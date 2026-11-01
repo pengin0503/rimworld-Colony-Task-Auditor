@@ -1,39 +1,43 @@
-Colony Task Auditor v1.0.0 for RimWorld 1.7 (built against 1.7.4985). Requires [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) (`brrainz.harmony`).
+Colony Task Auditor v1.0.1 for RimWorld 1.7 (built against 1.7.4985). Requires [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) (`brrainz.harmony`).
 
 ## 日本語
 
-止まったままになっている作業指示を見つけ、原因を確信度付きで表示する診断MODです。作業の強制・指示の削除・設定の変更は行いません。
+**追加**
+- 停滞中の作業を画面右のアラートで表示します。クリックで、マップを見ながら使える一覧ウィンドウを開きます。
+- プレイヤーのメカノイドを作業者として扱います。
 
-**主な機能**
-- 監視対象: 建築・採掘・解体・伐採の指示、製造指示（無制限を含む）、栽培・収穫、未完成品、搾乳・毛刈り
-- 初回観測・作業開始・最終進捗の記録と、実際の進捗を考慮した停滞判定
-- 原因診断: 作業者不在、スキル不足、材料不足・未搬入、禁止、製造指示の制限、予約、到達不能。確信度は確定・推定・不確実の3段階
-- 睡眠・徴兵中は計測を一時停止し、停止中の指示・播種できない時期・新しい指示は停滞とみなさない
-- 一覧、種類別フィルター、位置への移動、重複のない通知、監視種類と期間の設定
+**修正**
+- 素材を選ぶ建築（壁など）のブループリントがあると、スキャンのたびにエラーログが出ていました（v1.0.0から）。
+- 作業として数えるのは、その作業を行うJobだけにしました（燃料補給・修理・運搬などは数えない）。
+- 熟した作物や空きセルが増えても進捗とみなさないようにしました。
+- 大規模な採掘・建築の順番待ち、採掘範囲内側の未到達セル、禁止された対象、自律作業台の順番待ち、作業者が誰もいないマップを、停滞として扱わないようにしました。
+- 材料はすべて確認してから判定し、播種は必要スキルと物で塞がれたセルも診断します。
+- 1件の例外でスキャン全体が止まらないようにし、製造指示・区画・家畜にも処理上限と巡回を設けました。
+- 一覧から位置へ移動するときに設定画面を閉じます。
 
-**導入**: ZIPを展開し、`ColonyTaskAuditor` フォルダを `Mods` に置き、Harmonyより下で有効化します。
-
-**未検証範囲・既知の制限**
-- 通常のゲームプレイでの動作は確認していません。確認済みなのは、実物ゲームDLLを参照したビルド、静的な参照照合、モデル単体の確認、限定的なセーブ形式の確認です。
-- 所持品・運搬中の材料は数えないため、材料の診断は推定です。観測間隔の間に終わった作業は、製造の完了を除いて見逃すことがあります。
-- 大規模マップでのスキャン時間・TPS、多数MOD環境での互換性は未計測・未検証です。
-- このZIPに含まれるDLLは、公開参照アセンブリ（Krafs.Rimworld.Ref 1.7.4985）でCIビルドしたものです。
+**確認した範囲**: 実ゲーム（Linux、1.7.4985 rev1269）で次を確認しました。長時間の通常プレイは未確認です。
+- Harmonyパッチの登録（A+B 検証 passed）。
+- 2,400 Tickの有限実行で、作業者不在の間は停滞時間を保持し、解除後に再開すること。
+- 新しいエラーが出ないこと。
 
 ## English
 
-A diagnostic mod that finds stalled work orders and shows likely causes with a confidence level. It never forces jobs, deletes orders or changes settings.
+**Added**
+- An alert on the right side of the screen for stalled tasks. Clicking it opens a list window that can be used while watching the map.
+- Player mechanoids count as workers.
 
-**Features**
-- Monitors construction, mining, deconstruction and cutting designations, production bills (including unlimited), sowing/harvest, unfinished products, milking and shearing
-- Records first observation, first observed work and last progress, and judges stalls from actual progress
-- Diagnoses: no worker, missing skill, missing/undelivered materials, forbidden, bill restrictions, reservations, unreachable; confidence levels are confirmed, likely and uncertain
-- Sleep and drafting pause the timer; suspended bills, unsowable seasons and new orders are not treated as stalls
-- Task list, category filter, jump to location, de-duplicated notifications, configurable categories and threshold
+**Fixed**
+- A stuffable blueprint (walls, ...) logged an error on every scan (since v1.0.0).
+- Only the job that performs a task counts as work on it (refuelling, repair or hauling do not).
+- More ripe crops or empty cells no longer count as progress.
+- Large mining/building queues, unreachable interior mining cells, forbidden targets, bills queued on autonomous workbenches and maps with no workers are no longer treated as stalls.
+- Every material is checked before a diagnosis; sowing also checks the required skill and cells blocked by items.
+- One exception no longer stops the whole scan; bills, zones and animals have per-scan budgets with rotation.
+- Jumping from the settings list closes the settings dialog.
 
-**Installation**: extract the ZIP, place the `ColonyTaskAuditor` folder in `Mods`, and enable it below Harmony.
+**Checked**: in the real game (Linux, 1.7.4985 rev1269) the following were checked. Long normal gameplay is not verified.
+- Harmony patch registration (A+B validation passed).
+- In a 2,400-tick bounded run, the stall timer is held while no worker is available and resumes afterwards.
+- No new errors appeared.
 
-**Unverified scope and known limitations**
-- Not tested in normal gameplay. Checked: a build against the real game DLLs, static reference matching, model unit checks and limited save-format checks.
-- Inventory and in-transit materials are not counted, so material diagnoses are "likely". Work finishing between samples can be missed, except production completions.
-- Scan time/TPS on large maps and compatibility with large mod lists are not measured or verified.
-- The DLL in this ZIP was built in CI against public reference assemblies (Krafs.Rimworld.Ref 1.7.4985).
+The DLL in this ZIP was built in CI against public reference assemblies (Krafs.Rimworld.Ref 1.7.4985).

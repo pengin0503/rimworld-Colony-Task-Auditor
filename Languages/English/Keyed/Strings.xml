@@ -24,7 +24,7 @@
   <CTA_Uncertain>Uncertain</CTA_Uncertain>
   <CTA_Paused>Intentionally paused or not currently due</CTA_Paused>
   <CTA_Waiting>Workers temporarily unavailable; monitoring paused</CTA_Waiting>
-  <CTA_Forbidden>Target forbidden to player faction</CTA_Forbidden>
+  <CTA_Forbidden>Target is forbidden: treated as an intentional pause, not aged</CTA_Forbidden>
   <CTA_NoWorker>No colonist has the relevant work type enabled</CTA_NoWorker>
   <CTA_BillRestriction>Bill worker/skill restrictions exclude current colonists</CTA_BillRestriction>
   <CTA_Working>Worker activity observed; not a stall</CTA_Working>
@@ -43,4 +43,19 @@
   <CTA_BillMaterials>No permitted spawned item matches a recipe ingredient; inventories and delivery are unverified</CTA_BillMaterials>
   <CTA_ProgressHookUnavailable>Completion observer unavailable: bill completion between samples is unverified. Check Harmony.</CTA_ProgressHookUnavailable>
   <CTA_Timing>First observed tick {0}; first sampled work {1}; last progress {2}</CTA_Timing>
+  <CTA_OverdueOnly>Needs review only</CTA_OverdueOnly>
+  <CTA_HeldBacklog>waiting in queue (same work is in progress elsewhere)</CTA_HeldBacklog>
+  <CTA_PartialFailed>Partial scan: {0} entries could not be inspected and were skipped (see log).</CTA_PartialFailed>
+  <CTA_NoMap>Open a colony map.</CTA_NoMap>
+  <CTA_AlertLabel>Stalled tasks: {0}</CTA_AlertLabel>
+  <CTA_AlertMore>... and {0} more</CTA_AlertMore>
+  <CTA_AlertExplanation>These tasks have not progressed for the configured number of days while work was possible. The cause shown is a diagnosis with the stated confidence, not a certainty.</CTA_AlertExplanation>
+  <CTA_AlertClick>Click to open the list. While the list is open, clicking jumps to each location in turn.</CTA_AlertClick>
+  <CTA_ShowAlert>Show an alert for stalled tasks</CTA_ShowAlert>
+  <CTA_OpenList>Open task list window</CTA_OpenList>
+  <CTA_Queued>Waiting for the active bill on this autonomous workbench</CTA_Queued>
+  <CTA_MineQueued>Interior mining cell: reachable after surrounding rock is mined</CTA_MineQueued>
+  <CTA_SowBlocked>Every empty cell is occupied by items: haul them away to sow</CTA_SowBlocked>
+  <CTA_NoWorkersOnMap>No colonists or mechanoids on this map: judgement paused</CTA_NoWorkersOnMap>
+  <CTA_EmptyBlocked>({0} blocked by items)</CTA_EmptyBlocked>
 </LanguageData>

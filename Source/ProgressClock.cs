@@ -19,6 +19,14 @@ namespace Pengin.ColonyTaskAuditor
         // The interval after a hold is not counted because the wake-up time is unknown.
         public void Observe(int now, float progress, bool working, bool eligible, int maxGap, bool hold)
         {
+            Observe(now, progress, working, eligible, maxGap, hold, false);
+        }
+
+        // increasingOnly: only an increase of the metric is progress. Used for pending-work
+        // counts encoded as -count (crops ripening or new empty cells raise the backlog;
+        // that is new work, not completed work), so the baseline follows without a reset.
+        public void Observe(int now, float progress, bool working, bool eligible, int maxGap, bool hold, bool increasingOnly)
+        {
             if (float.IsNaN(progress) || float.IsInfinity(progress)) eligible = false;
             if (!Initialized || now < LastSeen)
             {
@@ -31,9 +39,10 @@ namespace Pengin.ColonyTaskAuditor
                 WasEligible = false;
             }
             int elapsed = now - LastSeen;
-            bool changed = progress != Progress;
+            bool changed = increasingOnly ? progress > Progress : progress != Progress;
             if (hold && eligible && !changed && !working && elapsed <= maxGap)
             {
+                Progress = progress;
                 LastSeen = now;
                 WasEligible = false;
                 return;

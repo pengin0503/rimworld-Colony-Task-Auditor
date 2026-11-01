@@ -66,13 +66,76 @@ namespace Pengin.ColonyTaskAuditor
         public int LastScanTick { get; private set; }
         public bool PartialScan { get; private set; }
         public double ScanMilliseconds { get; private set; }
-        private int designationOffset, objectOffset;
+        private int designationOffset, objectOffset,constructionOffset;
         private HashSet<Thing> activeThings;
         private HashSet<IntVec3> activeCells;
         private HashSet<Bill> activeBills;
         private List<Pawn> colonists;
-        private int pathBudget;
+        private int pathBudget,ingredientBudget;
+        private Dictionary<string,AuditRecord> recordLookup=new Dictionary<string,AuditRecord>();
+        private bool needsInitialScan=true;
+        private Dictionary<Thing,List<AuditRecord>> targetRecords=new Dictionary<Thing,List<AuditRecord>>();
+        private Dictionary<string,float> liveProgress=new Dictionary<string,float>();
+        public void NotifyBillProgress(Bill bill)
+        {
+            AuditRecord record;
+            if(recordLookup.TryGetValue("bill:"+bill.GetUniqueLoadID(),out record))record.Clock.MarkProgress(Find.TickManager.TicksGame);
+        }
+        private void ObserveActiveWork()
+        {
+            foreach(Pawn pawn in map.mapPawns.AllPawnsSpawned)
+            {
+                if(!pawn.IsColonistPlayerControlled||pawn.CurJob==null)continue;
+                int now=Find.TickManager.TicksGame;
+                if(pawn.CurJob.bill!=null)
+                {
+                    string id="bill:"+pawn.CurJob.bill.GetUniqueLoadID();AuditRecord r;
+                    if(recordLookup.TryGetValue(id,out r))
+                    {
+                        if(r.Clock.Started<0)r.Clock.Started=now;
+                        r.Clock.EligibleTicks=0;r.Clock.WasEligible=false;
+                        JobDriver_DoBill driver=pawn.jobs.curDriver as JobDriver_DoBill;
+                        if(driver!=null)
+                        {
+                            float previous;
+                            if(liveProgress.TryGetValue(id,out previous)&&previous!=driver.workLeft)r.Clock.MarkProgress(now);
+                            liveProgress[id]=driver.workLeft;
+                        }
+                    }
+                }
+                foreach(LocalTargetInfo target in new[]{pawn.CurJob.targetA,pawn.CurJob.targetB,pawn.CurJob.targetC})
+                {
+                    if(!target.HasThing)continue;
+                    List<AuditRecord> matches;
+                    if(targetRecords.TryGetValue(target.Thing,out matches))
+                        foreach(AuditRecord r in matches)
+                        {
+                            if(r.Clock.Started<0)r.Clock.Started=now;
+                            r.Clock.EligibleTicks=0;r.Clock.WasEligible=false;
+                            Frame frame=target.Thing as Frame;UnfinishedThing unfinished=target.Thing as UnfinishedThing;
+                            float value=frame!=null?frame.workDone:unfinished!=null?-unfinished.workLeft:target.Thing.HitPoints;
+                            if(value!=r.Clock.Progress){r.Clock.MarkProgress(now);r.Clock.Progress=value;}
+                        }
+                }
+            }
+        }
         private Dictionary<ThingDef,int> materialStocks;
+        private Dictionary<ThingDef,HashSet<WorkTypeDef>> workMappings;
+        private void BuildWorkMappings()
+        {
+            if(workMappings!=null)return;
+            workMappings=new Dictionary<ThingDef,HashSet<WorkTypeDef>>();
+            foreach(WorkGiverDef giver in DefDatabase<WorkGiverDef>.AllDefsListForReading)
+            {
+                if(giver.workType==null||giver.fixedBillGiverDefs==null||giver.giverClass==null||!typeof(WorkGiver_DoBill).IsAssignableFrom(giver.giverClass))continue;
+                foreach(ThingDef def in giver.fixedBillGiverDefs)
+                {
+                    HashSet<WorkTypeDef> types;
+                    if(!workMappings.TryGetValue(def,out types))workMappings[def]=types=new HashSet<WorkTypeDef>();
+                    types.Add(giver.workType);
+                }
+            }
+        }
 
         public TaskAuditComponent(Map map) : base(map) { }
         public override void ExposeData()
@@ -83,11 +146,13 @@ namespace Pengin.ColonyTaskAuditor
         }
         public override void MapComponentTick()
         {
+            if(needsInitialScan){needsInitialScan=false;Scan();}
+            if(Find.TickManager.TicksGame%250==map.uniqueID%250)ObserveActiveWork();
             if (Find.TickManager.TicksGame % Interval == map.uniqueID % Interval) Scan();
         }
         public void Scan()
         {
-            if (TaskAuditorMod.Settings == null || !map.IsPlayerHome) return;
+            if (TaskAuditorMod.Settings == null ) return;
             var timer = Stopwatch.StartNew();
             try { ScanCore(); }
             catch (Exception e)
@@ -104,10 +169,21 @@ namespace Pengin.ColonyTaskAuditor
             if (paused) { r.Reason = "CTA_Paused"; r.Confidence = "CTA_Confirmed"; return; }
             if (target != null && target.IsForbidden(Faction.OfPlayer))
             { r.Reason = "CTA_Forbidden"; r.Confidence = "CTA_Confirmed"; return; }
+            if(bill!=null&&work==null)work=bill.recipe.requiredGiverWorkType;
+            HashSet<WorkTypeDef> applicable=null;
+            if(bill!=null&&work==null&&target!=null)workMappings.TryGetValue(target.def,out applicable);
             var enabled = colonists.Where(p => p.workSettings != null &&
-                (work == null || p.workSettings.WorkIsActive(work))).ToList();
-            if (enabled.Count == 0 && work != null)
+                (work!=null?p.workSettings.WorkIsActive(work):applicable!=null&&applicable.Count>0?applicable.Any(p.workSettings.WorkIsActive):true)).ToList();
+            if (enabled.Count == 0 && (work != null||applicable!=null&&applicable.Count>0))
             { r.Reason = "CTA_NoWorker"; r.Confidence = "CTA_Confirmed"; return; }
+            BuildableDef construction=target==null?null:target.def.entityDefToBuild;
+            if(construction!=null&&enabled.Count>0&&!enabled.Any(p=>p.skills!=null&&
+                p.skills.GetSkill(SkillDefOf.Construction).Level>=construction.constructionSkillPrerequisite&&
+                p.skills.GetSkill(SkillDefOf.Artistic).Level>=construction.artisticSkillPrerequisite))
+            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return;}
+            if(bill!=null&&bill.recipe.skillRequirements!=null&&enabled.Count>0&&
+                !enabled.Any(p=>bill.recipe.skillRequirements.All(requirement=>requirement.PawnSatisfies(p))))
+            {r.Reason="CTA_Skill";r.Confidence="CTA_Confirmed";return;}
             if (bill != null && enabled.Count > 0 && !enabled.Any(p => bill.PawnAllowedToStartAnew(p)))
             { r.Reason = "CTA_BillRestriction"; r.Confidence = "CTA_Confirmed"; return; }
             var available = enabled.Where(p => !p.Drafted && !p.Downed && !p.InMentalState && p.Awake() &&
@@ -122,10 +198,10 @@ namespace Pengin.ColonyTaskAuditor
                 string reservation=BlockerEvidence.Reservation(map.reservationManager.IsReserved(target),available.Any(p=>p.CanReserve(target)));
                 if(reservation!=null){r.Reason=reservation;r.Confidence="CTA_Likely";return;}
                 Frame frame=target as Frame;
-                if(frame!=null)
-                    foreach(ThingDefCountClass cost in frame.TotalMaterialCost())
+                if(frame!=null||target is Blueprint)
+                    foreach(ThingDefCountClass cost in frame!=null?frame.TotalMaterialCost():construction.CostListAdjusted(target.Stuff))
                     {
-                        int needed=frame.ThingCountNeeded(cost.thingDef);
+                        int needed=frame!=null?frame.ThingCountNeeded(cost.thingDef):cost.count;
                         if(needed<=0)continue;
                         int stock;
                         if(!materialStocks.TryGetValue(cost.thingDef,out stock))
@@ -136,6 +212,19 @@ namespace Pengin.ColonyTaskAuditor
                         r.Reason=BlockerEvidence.Materials(needed,stock);r.Confidence="CTA_Likely";return;
                     }
             }
+            if(bill!=null)
+                foreach(IngredientCount ingredient in bill.recipe.ingredients)
+                {
+                    bool any=false,complete=true;
+                    foreach(ThingDef def in ingredient.filter.AllowedThingDefs)
+                    {
+                        if(ingredientBudget--<=0){complete=false;PartialScan=true;break;}
+                        if(!bill.ingredientFilter.Allows(def))continue;
+                        if(map.listerThings.ThingsOfDef(def).Any(t=>ingredient.filter.Allows(t)&&bill.ingredientFilter.Allows(t)&&!t.IsForbidden(Faction.OfPlayer)))
+                        {any=true;break;}
+                    }
+                    if(complete&&!any){r.Reason="CTA_BillMaterials";r.Confidence="CTA_Likely";return;}
+                }
             if (work == null && bill == null) return; // Unsupported task type: do not guess workers.
             bool allChecked = available.Count <= 12;
             foreach (Pawn pawn in available.Take(12))
@@ -149,6 +238,7 @@ namespace Pengin.ColonyTaskAuditor
         private void ScanCore()
         {
             AuditorSettings settings = TaskAuditorMod.Settings;
+            BuildWorkMappings();
             int now = Find.TickManager.TicksGame;
             PartialScan = false;
             colonists = map.mapPawns.AllPawnsSpawned.Where(p => p.IsColonistPlayerControlled).ToList();
@@ -161,6 +251,7 @@ namespace Pengin.ColonyTaskAuditor
                     if (t.IsValid) { activeCells.Add(t.Cell); if (t.HasThing) activeThings.Add(t.Thing); }
             }
             materialStocks=new Dictionary<ThingDef,int>();
+            ingredientBudget=512;
             pathBudget = 64; // Shared across all tasks, never per task.
             var old = new Dictionary<string, AuditRecord>();
             foreach (AuditRecord r in records)
@@ -174,7 +265,9 @@ namespace Pengin.ColonyTaskAuditor
                         EligibleTicks=c.EligibleTicks,Progress=c.Progress};
                     old.Add(copy.Id,copy);
                 }
+            var completeCategories=new HashSet<string>(new[]{"designation","bill","grow","unfinished","gather"});
             var seen = new HashSet<string>();
+            var nextTargets=new Dictionary<Thing,List<AuditRecord>>();
             Action<string,string,string,IntVec3,float,Thing,WorkTypeDef,Bill,bool> observe =
                 (id,category,label,cell,progress,target,work,bill,paused) =>
             {
@@ -183,6 +276,12 @@ namespace Pengin.ColonyTaskAuditor
                 if (!old.TryGetValue(id,out r)) old[id] = r = new AuditRecord {Id=id,FirstSeen=now};
                 r.Category=category; r.Description=label; r.LastSeen=now;
                 if (cell.IsValid) {r.X=cell.x; r.Z=cell.z;}
+                if(target!=null)
+                {
+                    List<AuditRecord> associated;
+                    if(!nextTargets.TryGetValue(target,out associated))nextTargets[target]=associated=new List<AuditRecord>();
+                    associated.Add(r);
+                }
                 Diagnose(r,target,cell,work,bill,paused);
                 bool working = r.Reason == "CTA_Working";
                 bool eligible = r.Reason != "CTA_Paused" && r.Reason != "CTA_Waiting";
@@ -192,7 +291,7 @@ namespace Pengin.ColonyTaskAuditor
             {
                 var all=map.designationManager.AllDesignations.ToList();
                 int count=Math.Min(all.Count,MaxDesignations);
-                if (count<all.Count) PartialScan=true;
+                if (count<all.Count) {PartialScan=true;completeCategories.Remove("designation");}
                 for (int i=0;i<count;i++)
                 {
                     Designation d=all[(designationOffset+i)%all.Count];
@@ -207,12 +306,17 @@ namespace Pengin.ColonyTaskAuditor
                 }
                 designationOffset=all.Count==0 ? 0 : (designationOffset+count)%all.Count;
                 // Blueprints/frames are not designations in vanilla.
-                foreach (Thing t in map.listerThings.ThingsInGroup(ThingRequestGroup.Construction))
+                var construction=map.listerThings.ThingsInGroup(ThingRequestGroup.Construction);
+                int constructionCount=Math.Min(construction.Count,MaxDesignations);
+                if(constructionCount<construction.Count){PartialScan=true;completeCategories.Remove("designation");}
+                for(int i=0;i<constructionCount;i++)
                 {
+                    Thing t=construction[(constructionOffset+i)%construction.Count];
                     Frame frame=t as Frame;
                     if (frame != null || t is Blueprint) observe("construction:"+t.ThingID,"designation",t.LabelShort,t.Position,
                         frame == null ? 0 : frame.workDone,t,WorkTypeDefOf.Construction,null,false);
                 }
+                constructionOffset=construction.Count==0?0:(constructionOffset+constructionCount)%construction.Count;
             }
             if (settings.Bills)
                 foreach (Building b in map.listerBuildings.allBuildingsColonist)
@@ -233,24 +337,27 @@ namespace Pengin.ColonyTaskAuditor
                 {
                     if (zone.CellCount==0) continue;
                     int empty=0,harvest=0,checkedCells=0;
+                    IntVec3 sowCell=IntVec3.Invalid,harvestCell=IntVec3.Invalid;
                     bool paused=!zone.allowSow || !zone.CanAcceptSowNow();
                     foreach (IntVec3 cell in zone.Cells)
                     {
-                        if (++checkedCells>MaxObjects) {PartialScan=true;break;}
+                        if (++checkedCells>MaxObjects) {PartialScan=true;completeCategories.Remove("grow");break;}
                         Plant plant=cell.GetPlant(map);
-                        if (plant==null) empty++;
-                        else if (plant.HarvestableNow) harvest++;
+                        if (plant==null&&cell.Standable(map)&&map.fertilityGrid.FertilityAt(cell)>=zone.GetPlantDefToGrow().plant.fertilityMin)
+                        {empty++;if(!sowCell.IsValid)sowCell=cell;}
+                        else if (plant!=null&&plant.HarvestableNow)
+                        {harvest++;if(!harvestCell.IsValid)harvestCell=cell;}
                     }
                     if (empty>0) observe("grow:"+zone.ID,"grow",zone.label+" / "+"CTA_Empty".Translate(empty),
-                        zone.Position,-empty,null,WorkTypeDefOf.Growing,null,paused);
+                        sowCell,-empty,null,WorkTypeDefOf.Growing,null,paused);
                     if (harvest>0) observe("harvest:"+zone.ID,"grow",zone.label+" / "+"CTA_Harvest".Translate(harvest),
-                        zone.Position,-harvest,null,WorkTypeDefOf.Growing,null,!zone.allowCut);
+                        harvestCell,-harvest,harvestCell.GetPlant(map),WorkTypeDefOf.Growing,null,!zone.allowCut);
                 }
             if (settings.Unfinished)
             {
                 var all=map.listerThings.AllThings;
                 int count=Math.Min(all.Count,MaxObjects);
-                if (count<all.Count) PartialScan=true;
+                if (count<all.Count) {PartialScan=true;completeCategories.Remove("unfinished");}
                 for(int i=0;i<count;i++)
                 {
                     UnfinishedThing t=all[(objectOffset+i)%all.Count] as UnfinishedThing;
@@ -272,12 +379,15 @@ namespace Pengin.ColonyTaskAuditor
             // eligibility so stale diagnostics cannot produce alerts.
             foreach (AuditRecord r in old.Values)
                 if (!seen.Contains(r.Id) && PartialScan) {r.Clock.WasEligible=false;r.Clock.EligibleTicks=0;}
-            records=old.Values.Where(r=>seen.Contains(r.Id)||PartialScan)
+            records=old.Values.Where(r=>seen.Contains(r.Id)||!completeCategories.Contains(r.Category))
                 .OrderBy(r=>r.Category).ThenBy(r=>r.FirstSeen).ToList();
             // Disabling a monitor removes its historical state even when another category is capped.
             records.RemoveAll(r => (r.Category=="designation"&&!settings.Designations) ||
                 (r.Category=="bill"&&!settings.Bills) || (r.Category=="grow"&&!settings.Farming) ||
                 (r.Category=="unfinished"&&!settings.Unfinished) || (r.Category=="gather"&&!settings.Gathering));
+            recordLookup=records.ToDictionary(r=>r.Id);
+            targetRecords=nextTargets;
+            foreach(string key in liveProgress.Keys.Where(k=>!recordLookup.ContainsKey(k)).ToList())liveProgress.Remove(key);
             int alerts=0;
             foreach(AuditRecord r in records)
                 if (seen.Contains(r.Id) && r.Clock.IsStalled(Math.Max(1,settings.WarningDays)*60000) &&
@@ -297,6 +407,7 @@ namespace Pengin.ColonyTaskAuditor
         public TaskAuditorMod(ModContentPack pack) : base(pack)
         {
             Settings = GetSettings<AuditorSettings>();
+            BillProgressHooks.Install();
         }
         public override string SettingsCategory() { return "Colony Task Auditor"; }
         public override void DoSettingsWindowContents(Rect rect)
@@ -304,6 +415,7 @@ namespace Pengin.ColonyTaskAuditor
             var list = new Listing_Standard();
             list.Begin(new Rect(rect.x, rect.y, rect.width, 287f));
             list.Label("CTA_Description".Translate());
+            if(!BillProgressHooks.Available)list.Label("CTA_ProgressHookUnavailable".Translate());
             list.Label("CTA_Threshold".Translate(Settings.WarningDays));
             Settings.WarningDays = (int)list.Slider(Settings.WarningDays, 1, 10);
             list.CheckboxLabeled("CTA_Designations".Translate(), ref Settings.Designations);
@@ -330,20 +442,22 @@ namespace Pengin.ColonyTaskAuditor
             // Overdue items are sorted first so users see urgent issues without paging.
             List<AuditRecord> display = audit.Records.Where(r=>filter==0 || r.Category==categories[filter])
                 .OrderBy(r => !r.Clock.IsStalled(threshold))
-                .ThenBy(r => r.FirstSeen).Take(75).ToList();
+                .ThenBy(r => r.FirstSeen).ToList();
             Rect viewport = new Rect(rect.x, rect.y + 337, rect.width, Math.Max(75f, rect.height - 340f));
-            Rect content = new Rect(0, 0, Math.Max(100f, viewport.width - 20), Math.Max(viewport.height, display.Count * 72f));
+            Rect content = new Rect(0, 0, Math.Max(100f, viewport.width - 20), Math.Max(viewport.height, display.Count * 108f));
             Widgets.BeginScrollView(viewport, ref scroll, content);
             for (int i = 0; i < display.Count; i++)
             {
+                if(i*108f+108<scroll.y||i*108f>scroll.y+viewport.height)continue;
                 AuditRecord item = display[i];
                 bool overdue = item.Clock.IsStalled(threshold);
-                Widgets.Label(new Rect(0, i * 72f, content.width - 80f, 69f),
+                Widgets.Label(new Rect(0, i * 108f, content.width - 80f, 105f),
                     (overdue ? "CTA_Overdue".Translate() : "CTA_Watching".Translate()) +
                     " [" + ("CTA_Filter"+item.Category).Translate() + "] " + item.Description + "\n" +
-                    "CTA_Days".Translate((item.Clock.EligibleTicks / 60000f).ToString("0.0")) + " / " + item.Reason.Translate() + " (" + item.Confidence.Translate() + ")");
+                    "CTA_Days".Translate((item.Clock.EligibleTicks / 60000f).ToString("0.0")) + " / " + item.Reason.Translate() + " (" + item.Confidence.Translate() + ")" + "\n" +
+                    "CTA_Timing".Translate(item.FirstSeen,item.Clock.Started<0?"—":item.Clock.Started.ToString(),item.Clock.LastProgress));
                 if (item.X >= 0 &&
-                    Widgets.ButtonText(new Rect(content.width - 76f, i * 72f + 5, 73f, 28f), "CTA_Jump".Translate()))
+                    Widgets.ButtonText(new Rect(content.width - 76f, i * 108f + 5, 73f, 28f), "CTA_Jump".Translate()))
                     CameraJumper.TryJump(new IntVec3(item.X, 0, item.Z), current);
             }
             Widgets.EndScrollView();

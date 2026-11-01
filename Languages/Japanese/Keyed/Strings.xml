@@ -39,4 +39,8 @@
   <CTA_MaterialMissing>未搬入の建築材料が利用可能な配置備蓄を上回る：所持品・運搬中の材料は未確認</CTA_MaterialMissing>
   <CTA_MaterialDelivery>建築材料が未搬入：備蓄へのアクセス・運搬を確認</CTA_MaterialDelivery>
   <CTA_Reserved>対象に予約があり、作業可能な入植者は予約できない：予約者を確認</CTA_Reserved>
+  <CTA_Skill>作業を有効にした入植者が製造・建築の必要スキルを満たしていない</CTA_Skill>
+  <CTA_BillMaterials>製造材料に適合する許可済み配置アイテムがない：所持品・搬入は未確認</CTA_BillMaterials>
+  <CTA_ProgressHookUnavailable>完了通知を観測できません：走査間の製造完了は未確認です。Harmonyを確認してください。</CTA_ProgressHookUnavailable>
+  <CTA_Timing>初回観測Tick {0}；最初の作業観測 {1}；最終進捗 {2}</CTA_Timing>
 </LanguageData>

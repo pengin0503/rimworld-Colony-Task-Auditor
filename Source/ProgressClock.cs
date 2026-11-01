@@ -40,6 +40,11 @@ namespace Pengin.ColonyTaskAuditor
             WasEligible = eligible && !working;
         }
 
+        public void MarkProgress(int now)
+        {
+            if(now<0)return;
+            LastProgress=now;EligibleTicks=0;WasEligible=false;Notified=false;
+        }
         public bool IsStalled(int threshold)
         {
             return Initialized && WasEligible && EligibleTicks >= Math.Max(1, threshold);

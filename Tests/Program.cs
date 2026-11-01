@@ -38,6 +38,8 @@ static class Program
         var saved = new ProgressClock { Initialized=c.Initialized,FirstSeen=c.FirstSeen,LastSeen=c.LastSeen,LastProgress=c.LastProgress,Started=c.Started,Progress=c.Progress,EligibleTicks=c.EligibleTicks,WasEligible=c.WasEligible,Notified=true };
         saved.Observe(12,1,false,true,20);
         Check(saved.IsStalled(10) && saved.Notified, "persisted primitive state preserves episode");
+        saved.MarkProgress(13);
+        Check(saved.LastProgress==13&&!saved.Notified&&!saved.IsStalled(1),"completed work resets stall even without numeric change");
         var bad = new ProgressClock();
         bad.Observe(0,float.NaN,false,true,20);
         bad.Observe(10,float.NaN,false,true,20);

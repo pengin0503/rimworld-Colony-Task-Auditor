@@ -62,7 +62,7 @@ namespace Pengin.ColonyTaskAuditor
     }
 
     // Everything Diagnose needs about one monitored task. Built per scan, never saved.
-    sealed class TaskContext
+    internal sealed class TaskContext
     {
         public Thing Target;
         public IntVec3 Cell = IntVec3.Invalid;
@@ -94,6 +94,7 @@ namespace Pengin.ColonyTaskAuditor
         public double ScanMilliseconds { get; private set; }
         // Overdue records seen in the last scan, used by the alert (cheap to read per frame).
         public List<AuditRecord> Overdue { get; private set; } = new List<AuditRecord>();
+        internal Dictionary<string,TaskContext> Contexts=new Dictionary<string,TaskContext>();
         private int designationOffset, objectOffset, constructionOffset, billOffset, zoneOffset, animalOffset;
         private List<Pawn> workers;
         private List<Job> activeJobs;
@@ -500,6 +501,7 @@ namespace Pengin.ColonyTaskAuditor
             var nextTargets=new Dictionary<Thing,List<AuditRecord>>();
             var nextCells=new Dictionary<IntVec3,List<AuditRecord>>();
             var nextMatchers=new Dictionary<string,Predicate<Job>>();
+            var nextContexts=new Dictionary<string,TaskContext>();
             Action<string,string,string,IntVec3,float,TaskContext,bool> observe =
                 (id,category,label,cell,progress,ctx,increasingOnly) =>
             {
@@ -520,7 +522,7 @@ namespace Pengin.ColonyTaskAuditor
                     if(!nextTargets.TryGetValue(ctx.Target,out associated))nextTargets[ctx.Target]=associated=new List<AuditRecord>();
                     associated.Add(r);
                 }
-                nextMatchers[id]=ctx.Matches;
+                nextMatchers[id]=ctx.Matches;nextContexts[id]=ctx;
                 TaskState state=Diagnose(r,ctx);
                 // Normal backlog: the same work type (or this workbench) is being worked on
                 // elsewhere, so an untouched entry waits its turn. Confirmed blockers still age.
@@ -681,7 +683,7 @@ namespace Pengin.ColonyTaskAuditor
             recordLookup=records.ToDictionary(r=>r.Id);
             targetRecords=nextTargets;
             cellRecords=nextCells;
-            matchers=nextMatchers;
+            matchers=nextMatchers;Contexts=nextContexts;
             foreach(string key in liveProgress.Keys.Where(k=>!recordLookup.ContainsKey(k)).ToList())liveProgress.Remove(key);
             recentWorkTypes.Clear();
             FailedItems=failed;

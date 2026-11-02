@@ -54,6 +54,8 @@ namespace Pengin.ColonyTaskAuditor
                     "CTA_Days".Translate((item.Clock.EligibleTicks / 60000f).ToString("0.0")).ToString() + " / " + item.Reason.Translate().ToString() + " (" + item.Confidence.Translate() + ")" +
                     (item.Held?" / "+"CTA_HeldBacklog".Translate().ToString():"") + "\n" +
                     "CTA_Timing".Translate(item.FirstSeen,item.Clock.Started<0?"—":item.Clock.Started.ToString(),item.Clock.HasProgress?item.Clock.LastProgress.ToString():"—"));
+                if(Widgets.ButtonText(new Rect(content.width-76f,i*row+38,73f,28f),"CTA_Details".Translate()))
+                    Find.WindowStack.Add(new Window_TaskRemedy(map,item.Id));
                 if (item.X >= 0 && Widgets.ButtonText(new Rect(content.width - 76f, i * row + 5, 73f, 28f), "CTA_Jump".Translate()))
                 {
                     // The settings dialog covers the map; close it so the jump is visible.

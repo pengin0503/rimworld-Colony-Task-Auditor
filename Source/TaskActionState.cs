@@ -72,6 +72,8 @@ namespace Pengin.ColonyTaskAuditor
                 var pawn=entry.Pawn;var priority=pawn==null||pawn.mindState==null?null:pawn.mindState.priorityWork;
                 bool owns=pawn!=null&&pawn.Spawned&&pawn.Map==map&&priority!=null&&priority.IsPrioritized&&entry.Giver!=null&&TemporaryWorkPolicy.ClearOwned(entry.RequestTick,entry.Giver.defName,new[]{entry.Cell.x,entry.Cell.z},
                     TemporaryWorkAssistance.RequestTick(priority),priority.WorkGiver==null?null:priority.WorkGiver.defName,new[]{priority.Cell.x,priority.Cell.z});
+                // IsPrioritized may itself run vanilla's timeout Clear, already handled by the hook.
+                if(!Active.Contains(entry))continue;
                 var watch=FindWatch(entry.TaskId);var record=audit.FindRecord(entry.TaskId);
                 bool absent=!audit.PartialScan&&audit.LastScanTick>0&&(record==null||record.LastSeen!=audit.LastScanTick);
                 bool priorityChanged=pawn!=null&&pawn.workSettings!=null&&entry.Work!=null&&pawn.workSettings.GetPriority(entry.Work)!=entry.ExpectedPriority;

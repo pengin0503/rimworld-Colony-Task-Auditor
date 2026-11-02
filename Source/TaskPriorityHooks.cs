@@ -16,7 +16,9 @@ namespace Pengin.ColonyTaskAuditor
         public static bool Available {get;private set;}
         struct Frame {public PriorityWriteSource Source;public Pawn Pawn;}
         // Pushed by void prefixes (always run, per Harmony) and popped by finalizers (always run).
-        static readonly List<Frame> context=new List<Frame>();
+        // Ticks are single-threaded; thread-static only guards against an unexpected caller.
+        [ThreadStatic] static List<Frame> context;
+        static List<Frame> Frames{get{return context??(context=new List<Frame>());}}
         static int timeoutTicks=-1;
         static bool clearWasExpired;
         public static void Install()
@@ -66,17 +68,21 @@ namespace Pengin.ColonyTaskAuditor
             }
             catch(Exception e){Log.Warning("Colony Task Auditor priority observation unavailable: "+e.GetType().Name);}
         }
-        static void Push(PriorityWriteSource source,Pawn pawn){context.Add(new Frame{Source=source,Pawn=pawn});}
-        public static void EnterNoWork(Pawn pawn){Push(PriorityWriteSource.NoWork,pawn);}
+        static void Push(PriorityWriteSource source,Pawn pawn){Frames.Add(new Frame{Source=source,Pawn=pawn});}
+        // Only the emergency (prioritized-work) giver clears; a Clear during an ordinary job
+        // search comes from some work giver's code and stays unidentified (Owned = no source).
+        public static void EnterNoWork(JobGiver_Work __instance,Pawn pawn){Push(__instance!=null&&__instance.emergency?PriorityWriteSource.NoWork:PriorityWriteSource.Owned,pawn);}
         public static void EnterReset(Pawn_MindState __instance){Push(PriorityWriteSource.Reset,__instance==null?null:__instance.pawn);}
         public static void EnterDrafted(Pawn_DraftController __instance){Push(PriorityWriteSource.Drafted,__instance==null?null:__instance.pawn);}
         // Clears the priority of every pawn hauling to the removed target.
         public static void EnterTargetChanged(){Push(PriorityWriteSource.TargetChanged,null);}
-        public static void ExitContext(){if(context.Count>0)context.RemoveAt(context.Count-1);}
+        public static void ExitContext(){var frames=Frames;if(frames.Count>0)frames.RemoveAt(frames.Count-1);}
+        // Innermost caller frame for this pawn; Owned means no identified vanilla source.
         static PriorityWriteSource Context(Pawn pawn)
         {
-            for(int i=context.Count-1;i>=0;i--)if(context[i].Pawn==null||context[i].Pawn==pawn)return context[i].Source;
-            return PriorityWriteSource.Owned; // none
+            var frames=Frames;
+            for(int i=frames.Count-1;i>=0;i--)if(frames[i].Pawn==null||frames[i].Pawn==pawn)return frames[i].Source;
+            return PriorityWriteSource.Owned;
         }
         // Vanilla clears an expired order from inside IsPrioritized; read its state first.
         public static void ClearPrefix(IntVec3 ___prioritizedCell,int ___prioritizeTick)

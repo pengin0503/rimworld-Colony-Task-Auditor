@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
-  <ItemGroup><Compile Include="Program.cs"/><Compile Include="RemedyTests.cs"/><Compile Include="../Source/TaskRemedyPlanner.cs"/><Compile Include="../Source/ProgressClock.cs" Link="ProgressClock.cs"/><Compile Include="../Source/BlockerEvidence.cs" Link="BlockerEvidence.cs"/></ItemGroup>
+  <ItemGroup><Compile Include="Program.cs"/><Compile Include="RemedyTests.cs"/><Compile Include="WatchTests.cs"/><Compile Include="../Source/TaskWatchlist.cs"/><Compile Include="../Source/TaskRemedyPlanner.cs"/><Compile Include="../Source/ProgressClock.cs" Link="ProgressClock.cs"/><Compile Include="../Source/BlockerEvidence.cs" Link="BlockerEvidence.cs"/></ItemGroup>
 </Project>

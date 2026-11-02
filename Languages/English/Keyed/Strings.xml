@@ -87,4 +87,8 @@
   <CTA_RemedyWait>Wait for current work, sleep, queues or the growing season; no automatic intervention.</CTA_RemedyWait>
   <CTA_RemedyReady>A supported executable job was verified for this worker. A bounded priority request can be previewed.</CTA_RemedyReady>
   <CTA_Ready>Executable job verified</CTA_Ready>
+  <CTA_ImportantOnly>Important only</CTA_ImportantOnly>
+  <CTA_WatchAdd>Mark important</CTA_WatchAdd>
+  <CTA_WatchRemove>Unmark</CTA_WatchRemove>
+  <CTA_WatchThreshold>Individual threshold: {0} days</CTA_WatchThreshold>
 </LanguageData>

@@ -87,4 +87,8 @@
   <CTA_RemedyWait>現在の作業・睡眠・順番・栽培期を待ちます。自動介入しません。</CTA_RemedyWait>
   <CTA_RemedyReady>この作業者に実行可能な対応作業を確認しました。期限付き優先依頼をプレビューできます。</CTA_RemedyReady>
   <CTA_Ready>実行可能な作業を確認</CTA_Ready>
+  <CTA_ImportantOnly>重要のみ</CTA_ImportantOnly>
+  <CTA_WatchAdd>重要登録</CTA_WatchAdd>
+  <CTA_WatchRemove>登録解除</CTA_WatchRemove>
+  <CTA_WatchThreshold>個別警告閾値：{0}日</CTA_WatchThreshold>
 </LanguageData>

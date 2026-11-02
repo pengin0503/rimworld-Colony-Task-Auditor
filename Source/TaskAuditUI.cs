@@ -14,7 +14,8 @@ namespace Pengin.ColonyTaskAuditor
         static readonly string[] categories = {"all","designation","bill","grow","unfinished","gather"};
         Vector2 scroll;
         int filter;
-        bool overdueOnly;
+        bool overdueOnly,importantOnly;
+        int cacheRevision=-1;bool cacheImportant;ActionMode cacheMode;
         // Sorting thousands of records every GUI event is wasteful: rebuild only when the
         // underlying scan, filter or threshold changes.
         List<AuditRecord> cache;
@@ -28,18 +29,21 @@ namespace Pengin.ColonyTaskAuditor
             if (Widgets.ButtonText(new Rect(rect.x+rect.width-150,rect.y,150,30), ("CTA_Filter"+categories[filter]).Translate()))
                 filter=(filter+1)%categories.Length;
             Widgets.CheckboxLabeled(new Rect(rect.x+rect.width-330,rect.y+4,170,24),"CTA_OverdueOnly".Translate(),ref overdueOnly);
+            var actions=map.GetComponent<TaskActionState>();
+            Widgets.CheckboxLabeled(new Rect(rect.x,rect.y+32,180,24),"CTA_ImportantOnly".Translate(),ref importantOnly);
             int threshold = TaskAuditorMod.Settings.WarningDays * 60000;
-            if(cache==null||cacheScan!=audit.LastScanTick||cacheFilter!=filter||cacheThreshold!=threshold||cacheOverdue!=overdueOnly||cacheSource!=audit)
+            if(cache==null||cacheRevision!=actions.Revision||cacheImportant!=importantOnly||cacheMode!=TaskAuditorMod.Settings.AssistanceMode||cacheScan!=audit.LastScanTick||cacheFilter!=filter||cacheThreshold!=threshold||cacheOverdue!=overdueOnly||cacheSource!=audit)
             {
                 // Overdue items are sorted first so users see urgent issues without paging.
-                cache=audit.Records.Where(r=>(filter==0 || r.Category==categories[filter])&&(!overdueOnly||r.Clock.ReachedThreshold(threshold)))
-                    .OrderBy(r => !r.Clock.ReachedThreshold(threshold)).ThenBy(r => r.FirstSeen).ToList();
+                cache=audit.Records.Where(r=>(filter==0 || r.Category==categories[filter])&&(!importantOnly||actions.FindWatch(r.Id)!=null)&&(!overdueOnly||r.Clock.ReachedThreshold(audit.Threshold(r))))
+                    .OrderBy(r=>actions.FindWatch(r.Id)==null).ThenBy(r => !r.Clock.ReachedThreshold(audit.Threshold(r))).ThenBy(r => r.FirstSeen).ToList();
+                cacheRevision=actions.Revision;cacheImportant=importantOnly;cacheMode=TaskAuditorMod.Settings.AssistanceMode;
                 cacheScan=audit.LastScanTick;cacheFilter=filter;cacheThreshold=threshold;cacheOverdue=overdueOnly;cacheSource=audit;
             }
             Widgets.Label(new Rect(rect.x + 155, rect.y + 4, Math.Max(50f,rect.width - 490), 28),
                 "CTA_Count".Translate(audit.Records.Count, audit.Overdue.Count));
             float footer=audit.PartialScan||audit.FailedItems>0?24f:0f;
-            Rect viewport = new Rect(rect.x, rect.y + 36, rect.width, Math.Max(75f, rect.height - 36 - footer));
+            Rect viewport = new Rect(rect.x, rect.y + 64, rect.width, Math.Max(75f, rect.height - 64 - footer));
             const float row=108f;
             Rect content = new Rect(0, 0, Math.Max(100f, viewport.width - 20), Math.Max(viewport.height, cache.Count * row));
             Widgets.BeginScrollView(viewport, ref scroll, content);
@@ -47,13 +51,15 @@ namespace Pengin.ColonyTaskAuditor
             {
                 if(i*row+row<scroll.y||i*row>scroll.y+viewport.height)continue;
                 AuditRecord item = cache[i];
-                bool overdue = item.Clock.ReachedThreshold(threshold);
+                bool overdue = item.Clock.ReachedThreshold(audit.Threshold(item));
                 Widgets.Label(new Rect(0, i * row, content.width - 80f, row-3),
                     (overdue ? "CTA_Overdue".Translate() : "CTA_Watching".Translate()) +
                     " [" + ("CTA_Filter"+item.Category).Translate() + "] " + item.Description + "\n" +
                     "CTA_Days".Translate((item.Clock.EligibleTicks / 60000f).ToString("0.0")).ToString() + " / " + item.Reason.Translate().ToString() + " (" + item.Confidence.Translate() + ")" +
                     (item.Held?" / "+"CTA_HeldBacklog".Translate().ToString():"") + "\n" +
                     "CTA_Timing".Translate(item.FirstSeen,item.Clock.Started<0?"—":item.Clock.Started.ToString(),item.Clock.HasProgress?item.Clock.LastProgress.ToString():"—"));
+                if(Widgets.ButtonText(new Rect(content.width-76f,i*row+71,73f,28f),(actions.FindWatch(item.Id)==null?"CTA_WatchAdd":"CTA_WatchRemove").Translate()))
+                    actions.Toggle(item.Id);
                 if(Widgets.ButtonText(new Rect(content.width-76f,i*row+38,73f,28f),"CTA_Details".Translate()))
                     Find.WindowStack.Add(new Window_TaskRemedy(map,item.Id));
                 if (item.X >= 0 && Widgets.ButtonText(new Rect(content.width - 76f, i * row + 5, 73f, 28f), "CTA_Jump".Translate()))
@@ -111,7 +117,7 @@ namespace Pengin.ColonyTaskAuditor
                 foreach(AuditRecord r in audit.Overdue)
                 {
                     // The cache is from the last scan; work may have resumed since.
-                    if(!r.Clock.ReachedThreshold(threshold))continue;
+                    if(!r.Clock.ReachedThreshold(audit.Threshold(r)))continue;
                     overdue.Add(r);
                     if(r.X>=0&&culprits.Count<50)culprits.Add(new GlobalTargetInfo(new IntVec3(r.X,0,r.Z),map));
                 }
@@ -139,9 +145,9 @@ namespace Pengin.ColonyTaskAuditor
                 Map current=Find.CurrentMap;
                 TaskAuditComponent here=current==null?null:current.GetComponent<TaskAuditComponent>();
                 int limit=TaskAuditorMod.Settings.WarningDays*60000;
-                if(here==null||!here.Overdue.Any(r=>r.Clock.ReachedThreshold(limit)))
+                if(here==null||!here.Overdue.Any(r=>r.Clock.ReachedThreshold(here.Threshold(r))))
                 {
-                    Map other=Find.Maps.FirstOrDefault(m=>{var a=m.GetComponent<TaskAuditComponent>();return a!=null&&a.Overdue.Any(r=>r.Clock.ReachedThreshold(limit));});
+                    Map other=Find.Maps.FirstOrDefault(m=>{var a=m.GetComponent<TaskAuditComponent>();return a!=null&&a.Overdue.Any(r=>r.Clock.ReachedThreshold(a.Threshold(r)));});
                     if(other!=null)CameraJumper.TryJump(other.Center,other);
                 }
                 Find.WindowStack.Add(new Window_TaskAudit());

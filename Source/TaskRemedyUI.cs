@@ -43,6 +43,15 @@ namespace Pengin.ColonyTaskAuditor
             }
             height=list.CurHeight+20;list.End();Widgets.EndScrollView();
         }
-        void DrawActions(Listing_Standard list,TaskAuditComponent audit) { }
+        void DrawActions(Listing_Standard list,TaskAuditComponent audit)
+        {
+            var actions=map.GetComponent<TaskActionState>();var watch=actions.FindWatch(id);
+            if(list.ButtonText((watch==null?"CTA_WatchAdd":"CTA_WatchRemove").Translate()))actions.Toggle(id);
+            watch=actions.FindWatch(id);
+            if(watch==null)return;
+            list.Label("CTA_WatchThreshold".Translate((watch.Threshold/60000f).ToString("0.2")));
+            int changed=(int)list.Slider(watch.Threshold,250,60000);
+            if(changed!=watch.Threshold){watch.Threshold=changed;actions.Revision++;}
+        }
     }
 }

@@ -11,6 +11,8 @@ namespace Pengin.ColonyTaskAuditor
     public sealed class AuditorSettings : ModSettings
     {
         public int WarningDays = 2;
+        public ActionMode RemedyMode=ActionMode.Confirm,AssistanceMode=ActionMode.Confirm;
+        public int WatchThreshold=30000,Cooldown=60000,AssistanceDuration=2500,MaxAssistance=2;
         public bool Designations = true, Bills = true, Farming = true, Unfinished = true, Gathering = true;
         public bool Notifications = true, ShowAlert = true;
         public override void ExposeData()
@@ -23,6 +25,14 @@ namespace Pengin.ColonyTaskAuditor
             Scribe_Values.Look(ref Gathering, "gathering", true);
             Scribe_Values.Look(ref Notifications, "notifications", true);
             Scribe_Values.Look(ref ShowAlert, "showAlert", true);
+            Scribe_Values.Look(ref RemedyMode,"remedyMode",ActionMode.Confirm);
+            Scribe_Values.Look(ref AssistanceMode,"assistanceMode",ActionMode.Confirm);
+            Scribe_Values.Look(ref WatchThreshold,"watchThreshold",30000);
+            Scribe_Values.Look(ref Cooldown,"assistanceCooldown",60000);
+            Scribe_Values.Look(ref AssistanceDuration,"assistanceDuration",2500);
+            Scribe_Values.Look(ref MaxAssistance,"maxAssistance",2);
+            WatchThreshold=Math.Max(250,Math.Min(600000,WatchThreshold));Cooldown=Math.Max(2500,Cooldown);
+            AssistanceDuration=Math.Max(250,Math.Min(60000,AssistanceDuration));MaxAssistance=Math.Max(1,Math.Min(8,MaxAssistance));
             base.ExposeData();
         }
     }
@@ -88,6 +98,8 @@ namespace Pengin.ColonyTaskAuditor
             MaxZoneCellsTotal = 40000, MaxAnimals = 1000;
         private List<AuditRecord> records = new List<AuditRecord>();
         public IReadOnlyList<AuditRecord> Records { get { return records; } }
+        public int Threshold(AuditRecord record)
+        {return TaskWatchlist.Threshold(map.GetComponent<TaskActionState>().FindWatch(record.Id),Math.Max(1,TaskAuditorMod.Settings.WarningDays)*60000,TaskAuditorMod.Settings.AssistanceMode);}
         public int LastScanTick { get; private set; }
         public bool PartialScan { get; private set; }
         public int FailedItems { get; private set; }
@@ -690,12 +702,13 @@ namespace Pengin.ColonyTaskAuditor
             int threshold=Math.Max(1,settings.WarningDays)*60000;
             int alerts=0;
             foreach(AuditRecord r in records)
-                if (seen.Contains(r.Id) && r.Clock.IsStalled(threshold) &&
+                if (seen.Contains(r.Id) && r.Clock.IsStalled(Threshold(r)) &&
                     r.Confidence=="CTA_Confirmed" && !r.Clock.Notified && settings.Notifications)
                 {r.Clock.Notified=true;alerts++;}
             if(alerts>0) Messages.Message("CTA_Notification".Translate(alerts),MessageTypeDefOf.NegativeEvent,false);
-            Overdue=records.Where(r=>seen.Contains(r.Id)&&r.Clock.ReachedThreshold(threshold)).ToList();
+            Overdue=records.Where(r=>seen.Contains(r.Id)&&r.Clock.ReachedThreshold(Threshold(r))).ToList();
             LastScanTick=now;
+            map.GetComponent<TaskActionState>().Prune(records.Select(r=>r.Id),!PartialScan);
         }
 
         private void ObserveZone(Zone_Growing zone,Action<string,string,string,IntVec3,float,TaskContext,bool> observe,HashSet<string> completeCategories)

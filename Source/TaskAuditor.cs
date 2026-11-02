@@ -98,10 +98,12 @@ namespace Pengin.ColonyTaskAuditor
             MaxZoneCellsTotal = 40000, MaxAnimals = 1000;
         private List<AuditRecord> records = new List<AuditRecord>();
         public IReadOnlyList<AuditRecord> Records { get { return records; } }
+        TaskActionState actionState;
+        TaskActionState Actions {get{return actionState??(actionState=map.GetComponent<TaskActionState>());}}
         internal int ProofBudget;
         internal AuditRecord FindRecord(string id){AuditRecord r;return recordLookup.TryGetValue(id,out r)?r:null;}
         public int Threshold(AuditRecord record)
-        {return TaskWatchlist.Threshold(map.GetComponent<TaskActionState>().FindWatch(record.Id),Math.Max(1,TaskAuditorMod.Settings.WarningDays)*60000,TaskAuditorMod.Settings.AssistanceMode);}
+        {return TaskWatchlist.Threshold(Actions.FindWatch(record.Id),Math.Max(1,TaskAuditorMod.Settings.WarningDays)*60000,TaskAuditorMod.Settings.AssistanceMode);}
         public int LastScanTick { get; private set; }
         public bool PartialScan { get; private set; }
         public int FailedItems { get; private set; }

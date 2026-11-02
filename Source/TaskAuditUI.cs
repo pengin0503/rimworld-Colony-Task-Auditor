@@ -165,7 +165,7 @@ namespace Pengin.ColonyTaskAuditor
         public TaskAuditorMod(ModContentPack pack) : base(pack)
         {
             Instance=this;Settings = GetSettings<AuditorSettings>();
-            BillProgressHooks.Install();
+            BillProgressHooks.Install();TaskPriorityHooks.Install();
         }
         public override string SettingsCategory() { return "Colony Task Auditor"; }
         public override void DoSettingsWindowContents(Rect rect)

@@ -1,7 +1,6 @@
 name: Validate and build (RimWorld 1.7 development)
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -23,6 +22,8 @@ jobs:
         run: dotnet restore Source/ColonyTaskAuditor.csproj
       - name: Compile (no game files distributed)
         run: dotnet build Source/ColonyTaskAuditor.csproj --configuration Release --no-restore
+      - name: Compile real-game fixtures (compile only, not runtime validation)
+        run: dotnet build Tests.Game/Tests.Game.csproj -c Release
       - name: Package development mod
         run: python3 tools/package_dev.py
       - uses: actions/upload-artifact@v4

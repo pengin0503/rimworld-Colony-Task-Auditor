@@ -4,7 +4,19 @@
 
 ## 日本語
 
-Colony Task Auditor は RimWorld 1.7 用の診断MODです。止まったままになっている作業指示を見つけ、原因を確信度付きで表示します。作業の強制・指示の削除・優先度や設定の変更は一切行いません。
+Colony Task Auditor は RimWorld 1.7 用の診断MODです。止まったままになっている作業指示を見つけ、原因を確信度付きで表示します。原因別の対処・作業者診断と重要作業の監視、一時的な優先依頼を支援します。既存Jobを強制中断したり、作業表を書き換えたりしません。
+
+### 対策・重要作業・一時支援
+
+一覧の「詳細・対策」で、原因別の候補対策、必要材料と許可・禁止在庫、技能・割当・到達性を確認できます。材料の選択肢は合算せず、搬送中や所持品まで確認できたとは断定しません。対象の選択と作業割当表への移動もできます。
+
+「重要登録」した対象は、個別の短い警告閾値を設定し、「重要のみ」で絞り込めます。登録はマップ・対象IDごとに保存し、完了・削除時に解除します。
+
+自動化設定の初期値は「確認付き」です。対応する実行可能なバニラ作業を、安全に待機中の割当済み入植者へ期限付きで優先依頼できます。直前に再検証し、手動指示・睡眠・徴兵・治療の必要・危険・通常の順番待ちを優先します。作業表の数値は変更しません。依頼は完成を保証しません。
+
+自動支援には機能の「自動」、重要登録、対象ごとの明示許可が必要です。部分走査、未解明・推定原因、意図的停止、優先度管理MODとの既知の競合では自動操作を停止します。対象を絞った実作業の検証で実行可能性を確認した場合だけ、確定した支援候補として扱います。手動・他MODによる優先依頼の変更で管理を解除し、自動許可を撤回します。上限・クールダウン・履歴をマップ別に保持します。
+
+MODを外す前に一時支援をOFFにしてください。所有している依頼は次Tickに解除します。新機能の通常ゲーム内UI、全マップのセーブ再読込、Harmony監視の実行、270以上のMODでの互換性・TPSは未検証です。
 
 ### 監視対象
 
@@ -53,7 +65,20 @@ Colony Task Auditor は RimWorld 1.7 用の診断MODです。止まったまま�
 
 ## English
 
-Colony Task Auditor is a diagnostic mod for RimWorld 1.7. It finds work orders that remain stalled and shows likely causes with an explicit confidence level. It never forces jobs, deletes orders or changes priorities or settings.
+### Remedies, important tasks and temporary support
+
+Use Details to inspect cause-specific advice, ingredient alternatives, permitted/forbidden stocks, skills, assignment and access. Ingredient alternatives must not be added together; these counts do not prove inventory or delivery status. You can select the target or open the work table.
+
+Mark important tasks, assign shorter individual thresholds and filter to important entries. Registrations use map/task identities and are removed on completion or deletion.
+
+Confirmation is the default. Supported executable vanilla work can receive a bounded priority request for a safe idle enabled colonist. Conditions are rechecked before execution; manual orders, sleep, drafting, medical needs, danger and normal queues take precedence. Work-table values are never changed, and completion is not guaranteed.
+
+Auto requires the feature Auto mode, an important registration and target-specific permission. Partial scans, unknown/inferred causes, intentional pauses and known priority-management MOD conflicts block automatic changes. Only a targeted live work-giver proof can publish a confirmed executable support candidate. Manual/external priority writes release ownership and revoke automatic permission. Caps, cooldown and history are map-local.
+
+Turn temporary support OFF before removing the mod; owned requests are cleared on the next tick. New normal-game UI, full-map save/reload, runtime Harmony observation and 270+ MOD/TPS compatibility remain unverified.
+
+
+Colony Task Auditor is a diagnostic mod for RimWorld 1.7. It finds work orders that remain stalled and shows likely causes with an explicit confidence level. It adds cause-specific remedies, worker diagnostics, important-task monitoring and temporary priority requests. It does not force or interrupt current jobs or rewrite the work table.
 
 ### Monitored work
 

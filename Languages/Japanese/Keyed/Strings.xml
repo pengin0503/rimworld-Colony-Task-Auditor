@@ -115,4 +115,5 @@
   <CTA_SelectTarget>対象を選択して設定を確認</CTA_SelectTarget>
   <CTA_OpenWorkTable>作業割当表を開く</CTA_OpenWorkTable>
   <CTA_SkillRequirement>必要技能：{0} ≥ {1}</CTA_SkillRequirement>
+  <CTA_PriorityHookUnavailable>優先依頼の監視を利用できないため、同一内容の手動指示を保護するため支援を停止します。</CTA_PriorityHookUnavailable>
 </LanguageData>

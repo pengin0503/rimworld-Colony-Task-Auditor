@@ -1,3 +1,11 @@
+# 1.1.0 actionable automation (development)
+
+- Cause-specific remedies, material/worker diagnostics and settings navigation.
+- Map-scoped important tasks with individual thresholds and filtering.
+- Bounded native priority requests with fresh execution proof, target permission, cooldown, caps and manual-write protection. No forced jobs or work-table rewrites.
+- 原因別対策、重要監視、確認付き一時支援、機能別の自動許可、日英UIを追加。
+- Runtime gameplay, Harmony execution and full save-load acceptance remain unverified; see VALIDATION.md.
+
 Colony Task Auditor v1.0.1 for RimWorld 1.7 (built against 1.7.4985). Requires [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) (`brrainz.harmony`).
 
 ## 日本語

@@ -15,6 +15,7 @@ namespace Pengin.ColonyTaskAuditor
             Widgets.BeginScrollView(new Rect(rect.x,rect.y,rect.width,rect.height-30),ref scroll,content);
             var list=new Listing_Standard();list.Begin(content);
             list.Label("CTA_AutomationSafety".Translate());
+            if(!TaskPriorityHooks.Available)list.Label("CTA_PriorityHookUnavailable".Translate());
             if(list.ButtonText("CTA_RemedyMode".Translate(("CTA_Mode"+s.RemedyMode).Translate())))s.RemedyMode=(ActionMode)(((int)s.RemedyMode+1)%3);
             if(list.ButtonText("CTA_AssistanceMode".Translate(("CTA_Mode"+s.AssistanceMode).Translate())))s.AssistanceMode=(ActionMode)(((int)s.AssistanceMode+1)%3);
             list.Label("CTA_WatchDefault".Translate((s.WatchThreshold/60000f).ToString("0.00")));s.WatchThreshold=(int)list.Slider(s.WatchThreshold,250,60000);

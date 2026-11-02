@@ -17,10 +17,20 @@ namespace Pengin.ColonyTaskAuditor
     {
         public List<TaskWatchEntry> Watches=new List<TaskWatchEntry>();
         public int Revision;
+        int indexedRevision=-1;
+        readonly Dictionary<string,WatchInfo> watchIndex=new Dictionary<string,WatchInfo>();
         public List<ActiveTaskAssistance> Active=new List<ActiveTaskAssistance>();
         public List<string> History=new List<string>();
         public int LastAction=-600000;
         int autoScan=-1;bool faulted;
+        public void ExternalPriorityWrite(Pawn pawn)
+        {
+            foreach(var entry in Active.Where(a=>a.Pawn==pawn).ToList())
+            {
+                var watch=FindWatch(entry.TaskId);if(watch!=null)watch.AutoAssist=false;
+                Active.Remove(entry);Revision++;AddHistory("external priority write: "+entry.TaskId);
+            }
+        }
         public void AddHistory(string text){History.Add(Find.TickManager.TicksGame+": "+text);while(History.Count>20)History.RemoveAt(0);}
         public override void MapComponentTick()
         {
@@ -35,7 +45,7 @@ namespace Pengin.ColonyTaskAuditor
             foreach(var entry in Active.ToList())
             {
                 var pawn=entry.Pawn;var priority=pawn==null||pawn.mindState==null?null:pawn.mindState.priorityWork;
-                bool owns=priority!=null&&priority.IsPrioritized&&entry.Giver!=null&&TemporaryWorkPolicy.ClearOwned(entry.RequestTick,entry.Giver.defName,new[]{entry.Cell.x,entry.Cell.z},
+                bool owns=pawn!=null&&pawn.Spawned&&pawn.Map==map&&priority!=null&&priority.IsPrioritized&&entry.Giver!=null&&TemporaryWorkPolicy.ClearOwned(entry.RequestTick,entry.Giver.defName,new[]{entry.Cell.x,entry.Cell.z},
                     TemporaryWorkAssistance.RequestTick(priority),priority.WorkGiver==null?null:priority.WorkGiver.defName,new[]{priority.Cell.x,priority.Cell.z});
                 var watch=FindWatch(entry.TaskId);var record=audit.FindRecord(entry.TaskId);
                 bool absent=!audit.PartialScan&&audit.LastScanTick>0&&(record==null||record.LastSeen!=audit.LastScanTick);
@@ -44,7 +54,7 @@ namespace Pengin.ColonyTaskAuditor
                 bool stop=priorityChanged||(pawn!=null&&pawn.CurJob!=null&&pawn.CurJob.playerForced)||settings.AssistanceMode==ActionMode.Off||now>=entry.Expires||pawn==null||!pawn.Spawned||pawn.Map!=map||pawn.Drafted||pawn.Downed||pawn.InMentalState||absent||
                     (entry.Automatic&&(settings.AssistanceMode!=ActionMode.Auto||watch==null||!watch.AutoAssist||TemporaryWorkAssistance.PriorityConflict()));
                 if(owns&&!stop)continue;
-                if(owns)priority.Clear(); // CAS: changed/manual priority requests are left untouched.
+                if(owns)TaskPriorityHooks.Clear(priority); // CAS: changed/manual priority requests are left untouched.
                 Active.Remove(entry);AddHistory("released "+entry.TaskId);
             }
             bool newScan=autoScan!=audit.LastScanTick;autoScan=audit.LastScanTick;
@@ -63,7 +73,16 @@ namespace Pengin.ColonyTaskAuditor
             }
         }
         public TaskActionState(Map map):base(map){}
-        public WatchInfo FindWatch(string id){var e=Watches.FirstOrDefault(w=>TaskWatchlist.Matches(w.Info,id,map.uniqueID));return e==null?null:e.Info;}
+        public WatchInfo FindWatch(string id)
+        {
+            if(indexedRevision!=Revision)
+            {
+                watchIndex.Clear();
+                foreach(var entry in Watches)if(entry!=null&&entry.Info!=null&&entry.Info.MapId==map.uniqueID&&!string.IsNullOrEmpty(entry.Info.Id))watchIndex[entry.Info.Id]=entry.Info;
+                indexedRevision=Revision;
+            }
+            WatchInfo result;return id!=null&&watchIndex.TryGetValue(id,out result)?result:null;
+        }
         public void Toggle(string id)
         {
             var existing=Watches.FirstOrDefault(w=>TaskWatchlist.Matches(w.Info,id,map.uniqueID));

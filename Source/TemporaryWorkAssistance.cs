@@ -42,7 +42,7 @@ namespace Pengin.ColonyTaskAuditor
         {
             var preview=new WorkAssistancePreview{TaskId=taskId,Pawn=pawn,Tick=Find.TickManager.TicksGame};
             var detail=TaskDetails.Inspect(audit,taskId,false,0);var r=detail.Record;
-            if(!detail.Current||audit.PartialScan||r==null||r.Held||!r.Clock.IsStalled(audit.Threshold(r))||detail.Work==null||priorityTick==null)return preview;
+            if(!detail.Current||audit.PartialScan||r==null||r.Held||!r.Clock.IsStalled(audit.Threshold(r))||detail.Work==null||priorityTick==null||!TaskPriorityHooks.Available)return preview;
             // Only a factually schedulable task can be enriched to Ready; known blockers,
             // queues and pauses are never reclassified merely because another job exists.
             if(r.Reason!="CTA_Unknown"&&r.Reason!="CTA_Ready")return preview;
@@ -105,9 +105,9 @@ namespace Pengin.ColonyTaskAuditor
             if(automatic&&!known)return false;
             if(!TemporaryWorkPolicy.CanStart(facts,settings.AssistanceMode,automatic,watch!=null,watch!=null&&watch.AutoAssist,now,state.LastAction,settings.Cooldown,state.Active.Count,settings.MaxAssistance))return false;
             if(state.Active.Any(x=>x.Pawn==live.Pawn||x.TaskId==shown.TaskId))return false;
-            live.Pawn.mindState.priorityWork.Set(live.Cell,live.Giver);
+            TaskPriorityHooks.Set(live.Pawn,live.Cell,live.Giver);
             int tick=RequestTick(live.Pawn.mindState.priorityWork);
-            if(tick<0){live.Pawn.mindState.priorityWork.Clear();return false;}
+            if(tick<0){TaskPriorityHooks.Clear(live.Pawn.mindState.priorityWork);return false;}
             state.Active.Add(new ActiveTaskAssistance{TaskId=shown.TaskId,Pawn=live.Pawn,Giver=live.Giver,Cell=live.Cell,RequestTick=tick,Expires=now+settings.AssistanceDuration,Automatic=automatic,Work=live.Work,ExpectedPriority=live.Priority});
             state.LastAction=now;state.AddHistory(shown.TaskId+" / "+live.Pawn.ThingID+" / "+live.Giver.defName);
             return true;

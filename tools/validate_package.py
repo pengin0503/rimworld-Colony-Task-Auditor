@@ -34,3 +34,10 @@ for language in ("English", "Japanese"):
 assert languages[0] == languages[1], "Translation keys differ"
 print(f"OK: ColonyTaskAuditor metadata and bilingual keys ({len(used)} used)")
 
+
+# User-visible placeholders must remain equivalent across languages.
+english = ET.parse(root / "Languages/English/Keyed/Strings.xml").getroot()
+japanese = ET.parse(root / "Languages/Japanese/Keyed/Strings.xml").getroot()
+texts = {n.tag: n.text or "" for n in japanese}
+for n in english:
+    assert sorted(re.findall(r"\{[0-9]+(?:[^}]*)\}", n.text or "")) == sorted(re.findall(r"\{[0-9]+(?:[^}]*)\}", texts[n.tag])), f"Placeholder mismatch: {n.tag}"

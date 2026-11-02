@@ -58,4 +58,62 @@
   <CTA_SowBlocked>空きセルがすべて物で塞がれている：運び出すと播種できる</CTA_SowBlocked>
   <CTA_NoWorkersOnMap>このマップに入植者・メカがいない：判定保留</CTA_NoWorkersOnMap>
   <CTA_EmptyBlocked>（うち{0}マスは物で塞がれている）</CTA_EmptyBlocked>
+  <CTA_Details>詳細・対策</CTA_Details>
+  <CTA_RefreshDetails>事実と候補を再確認</CTA_RefreshDetails>
+  <CTA_TargetGone>対象は削除・移動・完了・監視無効・未観測です。操作できません。</CTA_TargetGone>
+  <CTA_ActionEvidence>支援には対応する作業の直前検証が必要です。推定原因・意図的停止・通常の順番待ち・部分走査では自動操作しません。</CTA_ActionEvidence>
+  <CTA_MaterialAssumptions>材料：出現済みの許可・禁止在庫を分けて表示します。所持品・搬送中・到達性・材料の組合せは個数だけでは確定できません。レシピの材料行は選択肢で、合計必要数ではありません。</CTA_MaterialAssumptions>
+  <CTA_MaterialDetail>{0}：必要{1}、許可在庫{2}、禁止在庫{3}</CTA_MaterialDetail>
+  <CTA_RecipeAdvice>既存設備・レシピ候補（提案のみ。材料・完成見込みは未確認）：</CTA_RecipeAdvice>
+  <CTA_WorkerDiagnostics>作業者診断：{0}、播種の指定最低技能{1}。製造・建築の技能条件も適用します。</CTA_WorkerDiagnostics>
+  <CTA_WorkerCandidate>有効な候補。実作業は要検証</CTA_WorkerCandidate>
+  <CTA_WorkerSpecial>メカ・特殊制御：提案のみ</CTA_WorkerSpecial>
+  <CTA_WorkerUnsupported>作業種不明・未対応</CTA_WorkerUnsupported>
+  <CTA_WorkerIncapable>この作業は不可</CTA_WorkerIncapable>
+  <CTA_WorkerOff>手動でOFFの作業。自動では有効化しません</CTA_WorkerOff>
+  <CTA_WorkerUnavailable>徴兵・睡眠・ダウン・精神状態</CTA_WorkerUnavailable>
+  <CTA_WorkerRestriction>製造指示の作業者制限</CTA_WorkerRestriction>
+  <CTA_WorkerSkill>必要技能を満たしません</CTA_WorkerSkill>
+  <CTA_WorkerReach>安全な到達経路を確認できません</CTA_WorkerReach>
+  <CTA_RemedyInspect>対象と設定を確認してください。原因は確定していません。</CTA_RemedyInspect>
+  <CTA_RemedyMaterials>材料候補と保管場所を確認してください。在庫数だけでは製造開始の必要性を確定できません。</CTA_RemedyMaterials>
+  <CTA_RemedyDelivery>搬送・禁止在庫・障害物を確認してください。未搬入だけを根拠に製造指示を追加しません。</CTA_RemedyDelivery>
+  <CTA_RemedyAssignment>作業種と割当済み作業者を確認してください。手動でOFFの作業は維持します。</CTA_RemedyAssignment>
+  <CTA_RemedySkill>製造・建築・栽培の技能を満たす作業者を選ぶか、育成・作業内容を手動で調整してください。</CTA_RemedySkill>
+  <CTA_RemedyRestriction>製造指示の作業者・技能制限を手動で確認してください。</CTA_RemedyRestriction>
+  <CTA_RemedyReach>扉・許可エリア・安全な経路を確認してください。禁止やエリアは自動変更しません。</CTA_RemedyReach>
+  <CTA_RemedyReserved>予約者の作業を待つか確認してください。予約は自動解除しません。</CTA_RemedyReserved>
+  <CTA_RemedyManualPause>意図的な停止・禁止です。必要なら手動で解除してください。</CTA_RemedyManualPause>
+  <CTA_RemedyWait>現在の作業・睡眠・順番・栽培期を待ちます。自動介入しません。</CTA_RemedyWait>
+  <CTA_RemedyReady>この作業者に実行可能な対応作業を確認しました。期限付き優先依頼をプレビューできます。</CTA_RemedyReady>
+  <CTA_Ready>実行可能な作業を確認</CTA_Ready>
+  <CTA_ImportantOnly>重要のみ</CTA_ImportantOnly>
+  <CTA_WatchAdd>重要登録</CTA_WatchAdd>
+  <CTA_WatchRemove>登録解除</CTA_WatchRemove>
+  <CTA_WatchThreshold>個別警告閾値：{0}日</CTA_WatchThreshold>
+  <CTA_AllowAutoTarget>この重要作業の自動支援を許可</CTA_AllowAutoTarget>
+  <CTA_PriorityConflict>優先度管理MODを検出しました。自動支援を停止します。確認付き依頼でも全安全条件の検証が必要です。</CTA_PriorityConflict>
+  <CTA_PreviewWorker>1回の優先依頼をプレビュー：{0}</CTA_PreviewWorker>
+  <CTA_AssistanceBlocked>支援不可：完全で最新の走査、停滞中の実行可能な対象、安全に待機する割当済み入植者、手動優先・予約指示なし、対応する実行可能なバニラ作業が必要です。既知の阻害原因は提案のみです。</CTA_AssistanceBlocked>
+  <CTA_AssistancePreview>{0}に{1}を最大{2}ゲーム時間優先するよう依頼します。現在のJob・作業表の優先度は変更しません。実行依頼であり完成の保証ではありません。</CTA_AssistancePreview>
+  <CTA_ConfirmAssistance>優先依頼（確認）</CTA_ConfirmAssistance>
+  <CTA_AssistanceConfirm>{0}に{1}の一時的な優先を依頼しますか？直前に条件を再検証します。現在の作業・手動指示・作業優先度は維持します。</CTA_AssistanceConfirm>
+  <CTA_ActionChanged>条件変更・許可撤回・クールダウン・上限により実行できません。プレビューを更新してください。</CTA_ActionChanged>
+  <CTA_AutomationSettings>自動化・安全設定</CTA_AutomationSettings>
+  <CTA_AutomationSafety>初期設定は確認付きです。自動支援には重要登録・対象の明示許可・最新の確定した実行可能作業・優先度管理MODとの競合なしが必要です。対応するバニラ作業と待機中の作業者に限定します。OFFで所有する依頼を次Tickに解除します。</CTA_AutomationSafety>
+  <CTA_RemedyMode>原因別対策：{0}</CTA_RemedyMode>
+  <CTA_AssistanceMode>重要監視・一時支援：{0}</CTA_AssistanceMode>
+  <CTA_ModeOff>OFF</CTA_ModeOff>
+  <CTA_ModeConfirm>確認付き</CTA_ModeConfirm>
+  <CTA_ModeAuto>自動（対象許可が必要）</CTA_ModeAuto>
+  <CTA_WatchDefault>新規重要対象の警告閾値：{0}日</CTA_WatchDefault>
+  <CTA_AssistanceDuration>優先依頼の期限：{0}ゲーム時間</CTA_AssistanceDuration>
+  <CTA_Cooldown>操作クールダウン：{0}日</CTA_Cooldown>
+  <CTA_MaxAssistance>マップごとの同時依頼上限：{0}</CTA_MaxAssistance>
+  <CTA_RevokeAll>このマップの自動支援許可を全解除</CTA_RevokeAll>
+  <CTA_ActionHistory>最近の操作履歴（このマップ）</CTA_ActionHistory>
+  <CTA_SelectTarget>対象を選択して設定を確認</CTA_SelectTarget>
+  <CTA_OpenWorkTable>作業割当表を開く</CTA_OpenWorkTable>
+  <CTA_SkillRequirement>必要技能：{0} ≥ {1}</CTA_SkillRequirement>
+  <CTA_PriorityHookUnavailable>優先依頼の監視を利用できないため、同一内容の手動指示を保護するため支援を停止します。</CTA_PriorityHookUnavailable>
 </LanguageData>

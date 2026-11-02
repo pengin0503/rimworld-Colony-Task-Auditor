@@ -147,3 +147,16 @@ Review follow-up (PR #23):
 - Growing zones: the rotation window is decided before any zone is observed. The allowed gap is derived from the number of scans of one full budgeted rotation plus a boundary margin, not from this scan's count, so zones of different sizes are covered.
 - The alert rechecks each cached overdue record against its current clock, so tasks that resumed since the scan are not reported. The map switch uses the same check.
 - Thing-targeted jobs are also indexed by cell, and the 250-tick sampler matches cell-based orders. Re-running the bounded real-game probe with a mining designation next to a miner: the record was `CTA_Working` with a first-work tick at 1000 and 1300, `CTA_Waiting` while drafted, and `CTA_Working` again after undrafting. The other probe results were unchanged.
+
+## 2026-11-02 actionable automation
+
+- Public-reference Release mod and Tests.Game fixture compilation: zero warnings/errors.
+- Pure regression suite: 29 progress assertions, 14 remedy-policy scenarios, 7 watchlist scenarios, 18 temporary-support safety scenarios. RED→GREEN observed for new models and the component-order freshness regression.
+- R2 1.7.4985 metadata checked for PriorityWork.Set/Clear, private pawn/prioritizeTick fields, Pawn_WorkSettings.GetPriority/SetPriority and related recipe/bill types. Public reference compilation verifies signatures, not gameplay.
+- The existing Scribe fixture now covers watch identities and new settings; it was compiled but **not executed** against real game DLLs in this session.
+- Implementation uses native PriorityWork only; there is no forced Job assignment and no work-table priority mutation/restoration. CAS clearing checks giver/cell/timestamp and Harmony observes external Set/Clear to preserve identical manual writes within the same tick. If observation is unavailable, support is disabled.
+- Confirmed Ready is published only after a targeted executable vanilla work-giver proof for an idle enabled safe colonist. Known blockers and held queues are not promoted. Auto requires this published fact, a watch and target opt-in.
+- Extra proof budget: 64 per detailed scan, at most 4 watched tasks and 8 worker candidates each; lightweight resolution avoids repeating material scans. Watch lookup is indexed. Native 250/5000-tick sampling/scan cadence is retained. Automatic execution accepts a scan up to 250 ticks old and rechecks live conditions, avoiding MapComponent-order dependence.
+- Inline whole-branch review used per instruction to avoid subagents.
+- Unverified: actual Harmony patch execution, in-game priority scheduling/expiry, normal UI interactions, whole-map Scribe reference resolution and install/removal, Work Tab/WorkRoles and 270+ MOD compatibility, TPS/GC comparison. Earlier user play validation covers earlier features, not these additions.
+- No private game files or credentials included in CI or packages.

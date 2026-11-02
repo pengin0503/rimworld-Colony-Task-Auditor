@@ -58,4 +58,62 @@
   <CTA_SowBlocked>Every empty cell is occupied by items: haul them away to sow</CTA_SowBlocked>
   <CTA_NoWorkersOnMap>No colonists or mechanoids on this map: judgement paused</CTA_NoWorkersOnMap>
   <CTA_EmptyBlocked>({0} blocked by items)</CTA_EmptyBlocked>
+  <CTA_Details>Details</CTA_Details>
+  <CTA_RefreshDetails>Refresh facts and candidates</CTA_RefreshDetails>
+  <CTA_TargetGone>Task removed, moved, completed, disabled or not observed. No action is available.</CTA_TargetGone>
+  <CTA_ActionEvidence>Only a freshly verified supported job can be assisted. An inferred cause, deliberate pause, normal queue or partial scan never triggers automation.</CTA_ActionEvidence>
+  <CTA_MaterialAssumptions>Materials: spawned permitted/forbidden stacks are shown separately. Inventory, hauling, access and alternative ingredient combinations are not proven by these counts. Recipe ingredient rows are alternatives, not totals.</CTA_MaterialAssumptions>
+  <CTA_MaterialDetail>{0}: needed {1}; permitted {2}; forbidden {3}</CTA_MaterialDetail>
+  <CTA_RecipeAdvice>Existing recipe/workbench candidates (advice only; ingredients and completion are unverified):</CTA_RecipeAdvice>
+  <CTA_WorkerDiagnostics>Worker diagnostics: {0}; explicit sowing minimum {1}. Recipe/build skill checks still apply.</CTA_WorkerDiagnostics>
+  <CTA_WorkerCandidate>Enabled candidate; actual job still needs verification</CTA_WorkerCandidate>
+  <CTA_WorkerSpecial>Mech/special control: advice only</CTA_WorkerSpecial>
+  <CTA_WorkerUnsupported>Work type unavailable</CTA_WorkerUnsupported>
+  <CTA_WorkerIncapable>Incapable of this work</CTA_WorkerIncapable>
+  <CTA_WorkerOff>Manually disabled work; never enabled automatically</CTA_WorkerOff>
+  <CTA_WorkerUnavailable>Drafted, asleep, downed or mental state</CTA_WorkerUnavailable>
+  <CTA_WorkerRestriction>Bill worker restriction</CTA_WorkerRestriction>
+  <CTA_WorkerSkill>Skill requirement not met</CTA_WorkerSkill>
+  <CTA_WorkerReach>No verified safe access</CTA_WorkerReach>
+  <CTA_RemedyInspect>Inspect the work target and settings. The cause is not established.</CTA_RemedyInspect>
+  <CTA_RemedyMaterials>Check material alternatives and storage. A count shortage is advisory, not proof that crafting must be started.</CTA_RemedyMaterials>
+  <CTA_RemedyDelivery>Check hauling, forbidden stacks and obstructions. Do not recreate a production bill merely because materials are undelivered.</CTA_RemedyDelivery>
+  <CTA_RemedyAssignment>Review the named work type and enabled workers. Deliberately disabled work remains disabled.</CTA_RemedyAssignment>
+  <CTA_RemedySkill>Choose a worker who meets recipe, construction and planting skills; train skills or adjust the task manually.</CTA_RemedySkill>
+  <CTA_RemedyRestriction>Review the bill’s worker and skill restrictions manually.</CTA_RemedyRestriction>
+  <CTA_RemedyReach>Inspect doors, areas and safe routes. No forbidden door/area is changed automatically.</CTA_RemedyReach>
+  <CTA_RemedyReserved>Wait for the reservation owner or inspect the active job. Reservations are never cleared automatically.</CTA_RemedyReserved>
+  <CTA_RemedyManualPause>This is a deliberate pause/forbid. Resume manually if intended.</CTA_RemedyManualPause>
+  <CTA_RemedyWait>Wait for current work, sleep, queues or the growing season; no automatic intervention.</CTA_RemedyWait>
+  <CTA_RemedyReady>A supported executable job was verified for this worker. A bounded priority request can be previewed.</CTA_RemedyReady>
+  <CTA_Ready>Executable job verified</CTA_Ready>
+  <CTA_ImportantOnly>Important only</CTA_ImportantOnly>
+  <CTA_WatchAdd>Mark important</CTA_WatchAdd>
+  <CTA_WatchRemove>Unmark</CTA_WatchRemove>
+  <CTA_WatchThreshold>Individual threshold: {0} days</CTA_WatchThreshold>
+  <CTA_AllowAutoTarget>Allow automatic support for this important task</CTA_AllowAutoTarget>
+  <CTA_PriorityConflict>A work-priority management MOD is detected. Auto support is disabled; confirmed priority requests still require all safety checks.</CTA_PriorityConflict>
+  <CTA_PreviewWorker>Preview one priority request: {0}</CTA_PreviewWorker>
+  <CTA_AssistanceBlocked>Support blocked: requires a complete current scan, a stalled eligible task, a safe idle enabled colonist, no manual priority/queue, and a supported executable vanilla work giver. Known blockers are advisory.</CTA_AssistanceBlocked>
+  <CTA_AssistancePreview>Request {0} to prioritize {1} for at most {2} game hours. No current job is interrupted and no work-table priority is changed. This requests work; completion is not guaranteed.</CTA_AssistancePreview>
+  <CTA_ConfirmAssistance>Request priority (confirmation)</CTA_ConfirmAssistance>
+  <CTA_AssistanceConfirm>Ask {0} to prioritize {1} temporarily? Conditions are rechecked now. Current work, manual orders and work priorities are preserved.</CTA_AssistanceConfirm>
+  <CTA_ActionChanged>Conditions changed, permission was revoked, or the cooldown/cap prevents the action. Refresh the preview.</CTA_ActionChanged>
+  <CTA_AutomationSettings>Automation / safety settings</CTA_AutomationSettings>
+  <CTA_AutomationSafety>Defaults: Confirm. Auto support requires an important task, its explicit permission, a fresh confirmed executable job, and no priority-management conflict. Only supported vanilla jobs and idle workers are considered. OFF clears owned requests on the next tick.</CTA_AutomationSafety>
+  <CTA_RemedyMode>Cause-specific remedies: {0}</CTA_RemedyMode>
+  <CTA_AssistanceMode>Important monitoring / temporary support: {0}</CTA_AssistanceMode>
+  <CTA_ModeOff>OFF</CTA_ModeOff>
+  <CTA_ModeConfirm>Confirm</CTA_ModeConfirm>
+  <CTA_ModeAuto>Automatic (target permission required)</CTA_ModeAuto>
+  <CTA_WatchDefault>New important-task threshold: {0} days</CTA_WatchDefault>
+  <CTA_AssistanceDuration>Priority request duration: {0} game hours</CTA_AssistanceDuration>
+  <CTA_Cooldown>Action cooldown: {0} days</CTA_Cooldown>
+  <CTA_MaxAssistance>Simultaneous request cap per map: {0}</CTA_MaxAssistance>
+  <CTA_RevokeAll>Revoke all automatic support permissions on this map</CTA_RevokeAll>
+  <CTA_ActionHistory>Recent action history (map-local)</CTA_ActionHistory>
+  <CTA_SelectTarget>Select target and inspect settings</CTA_SelectTarget>
+  <CTA_OpenWorkTable>Open work assignment table</CTA_OpenWorkTable>
+  <CTA_SkillRequirement>Required skill: {0} ≥ {1}</CTA_SkillRequirement>
+  <CTA_PriorityHookUnavailable>Priority observation is unavailable: support is disabled to protect identical manual requests.</CTA_PriorityHookUnavailable>
 </LanguageData>

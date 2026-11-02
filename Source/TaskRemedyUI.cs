@@ -22,7 +22,7 @@ namespace Pengin.ColonyTaskAuditor
         public override void DoWindowContents(Rect rect)
         {
             var audit=map.GetComponent<TaskAuditComponent>();
-            if(TaskAuditorMod.Settings.RemedyMode==ActionMode.Auto&&detailScan!=audit.LastScanTick)
+            if(detailScan!=audit.LastScanTick)
             {detail=TaskDetails.Inspect(audit,id);detailScan=audit.LastScanTick;assistance=null;}
             Rect view=new Rect(rect.x,rect.y,rect.width,rect.height-30);
             Rect content=new Rect(0,0,rect.width-20,System.Math.Max(height,view.height));

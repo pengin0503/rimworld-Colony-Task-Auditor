@@ -119,4 +119,6 @@
   <CTA_JumpMaterial>Locate stored material: {0}</CTA_JumpMaterial>
   <CTA_JumpRecipeBench>Locate production bench: {0}</CTA_JumpRecipeBench>
   <CTA_JumpWorker>Select possible worker: {0} ({1})</CTA_JumpWorker>
+  <CTA_ResumePausedBill>Resume paused production bill (requires confirmation)</CTA_ResumePausedBill>
+  <CTA_ResumeBillConfirm>Resume this manually paused production bill? This will change the bill's suspended status; the mod will not assign a pawn or modify work priorities.</CTA_ResumeBillConfirm>
 </LanguageData>

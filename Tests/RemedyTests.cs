@@ -21,6 +21,16 @@ static class RemedyTests
             throw new Exception("path blocker should offer target navigation");
         if(TaskRemedyPlanner.NavigationFor("CTA_Paused")!=RemedyNavigation.Target)
             throw new Exception("manual pause should offer target inspection, not direct changes");
-        Console.WriteLine("PASS 18 remedy policy scenarios");
+        if(!TaskRemedyPlanner.CanResumePausedBill("CTA_Paused",true,false,true,true))
+            throw new Exception("confirmed paused bill may be resumed with explicit approval");
+        if(TaskRemedyPlanner.CanResumePausedBill("CTA_Paused",true,false,true,false))
+            throw new Exception("manual pause must not resume automatically");
+        if(TaskRemedyPlanner.CanResumePausedBill("CTA_Paused",false,false,true,true))
+            throw new Exception("unconfirmed reason must not resume");
+        if(TaskRemedyPlanner.CanResumePausedBill("CTA_Paused",true,true,true,true))
+            throw new Exception("partial scan must not resume");
+        if(TaskRemedyPlanner.CanResumePausedBill("CTA_Waiting",true,false,true,true))
+            throw new Exception("normal queue must not resume");
+        Console.WriteLine("PASS 23 remedy policy scenarios");
     }
 }

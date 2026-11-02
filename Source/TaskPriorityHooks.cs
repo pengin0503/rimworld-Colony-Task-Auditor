@@ -51,6 +51,9 @@ namespace Pengin.ColonyTaskAuditor
                 // Optional attribution. A missing caller only makes its Clear count as External.
                 var contexts=new List<KeyValuePair<MethodBase,string>>
                 {
+                    // Vanilla's timeout Clear runs inside this getter; an old order cleared by
+                    // anyone else is not a timeout.
+                    new KeyValuePair<MethodBase,string>(typeof(PriorityWork).GetProperty("IsPrioritized")==null?null:typeof(PriorityWork).GetProperty("IsPrioritized").GetGetMethod(),"EnterTimeout"),
                     new KeyValuePair<MethodBase,string>(typeof(JobGiver_Work).GetMethod("TryIssueJobPackage",new[]{typeof(Pawn),typeof(JobIssueParams)}),"EnterNoWork"),
                     new KeyValuePair<MethodBase,string>(typeof(Pawn_MindState).GetMethod("Reset",new[]{typeof(bool),typeof(bool),typeof(bool)}),"EnterReset"),
                     new KeyValuePair<MethodBase,string>(typeof(Pawn_DraftController).GetProperty("Drafted")==null?null:typeof(Pawn_DraftController).GetProperty("Drafted").GetSetMethod(),"EnterDrafted"),
@@ -71,6 +74,7 @@ namespace Pengin.ColonyTaskAuditor
         static void Push(PriorityWriteSource source,Pawn pawn){Frames.Add(new Frame{Source=source,Pawn=pawn});}
         // Only the emergency (prioritized-work) giver clears; a Clear during an ordinary job
         // search comes from some work giver's code and stays unidentified (Owned = no source).
+        public static void EnterTimeout(Pawn ___pawn){Push(PriorityWriteSource.Timeout,___pawn);}
         public static void EnterNoWork(JobGiver_Work __instance,Pawn pawn){Push(__instance!=null&&__instance.emergency?PriorityWriteSource.NoWork:PriorityWriteSource.Owned,pawn);}
         public static void EnterReset(Pawn_MindState __instance){Push(PriorityWriteSource.Reset,__instance==null?null:__instance.pawn);}
         public static void EnterDrafted(Pawn_DraftController __instance){Push(PriorityWriteSource.Drafted,__instance==null?null:__instance.pawn);}

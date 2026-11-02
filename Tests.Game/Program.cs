@@ -52,7 +52,8 @@ class Program
             if(timeout==null||!timeout.IsLiteral||(int)timeout.GetRawConstantValue()!=30000)throw new Exception("PriorityWork timeout changed");
             foreach(string field in new[]{"pawn","prioritizedCell","prioritizeTick"})
                 if(typeof(PriorityWork).GetField(field,nonPublic)==null)throw new Exception("PriorityWork field missing: "+field);
-            if(typeof(RimWorld.JobGiver_Work).GetMethod("TryIssueJobPackage",new[]{typeof(Pawn),typeof(Verse.AI.JobIssueParams)})==null||
+            if(typeof(PriorityWork).GetProperty("IsPrioritized")?.GetGetMethod()==null||
+                if(typeof(RimWorld.JobGiver_Work).GetMethod("TryIssueJobPackage",new[]{typeof(Pawn),typeof(Verse.AI.JobIssueParams)})==null||
                 typeof(Verse.AI.Pawn_MindState).GetMethod("Reset",new[]{typeof(bool),typeof(bool),typeof(bool)})==null||
                 typeof(RimWorld.Pawn_DraftController).GetProperty("Drafted")?.GetSetMethod()==null||
                 typeof(Verse.AI.ThingCountTracker).GetMethod("InterruptEnroutePawns",new[]{typeof(Pawn)})==null)

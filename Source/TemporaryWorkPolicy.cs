@@ -28,7 +28,8 @@ namespace Pengin.ColonyTaskAuditor
             if(owned)return PriorityWriteSource.Owned;
             // Every non-owned Set is a new order, even inside an engine context.
             if(isSet)return PriorityWriteSource.External;
-            if(expiredBefore)return PriorityWriteSource.Timeout;
+            // Timeout needs both: cleared from inside IsPrioritized, and the order was overdue.
+            if(context==PriorityWriteSource.Timeout)return expiredBefore?PriorityWriteSource.Timeout:PriorityWriteSource.External;
             return context==PriorityWriteSource.Owned?PriorityWriteSource.External:context;
         }
         // Natural or engine-caused ends release the request but keep the player's Auto

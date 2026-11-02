@@ -38,7 +38,10 @@ static class AssistanceTests
         var none=PriorityWriteSource.Owned;
         check(TemporaryWorkPolicy.ClassifyWrite(true,false,false,none)==PriorityWriteSource.Owned,"own write ignored");
         // Before #28 every one of these withdrew Auto permission like an External write.
-        check(TemporaryWorkPolicy.ClassifyWrite(false,false,true,none)==PriorityWriteSource.Timeout,"vanilla timeout Clear is natural");
+        check(TemporaryWorkPolicy.ClassifyWrite(false,false,true,PriorityWriteSource.Timeout)==PriorityWriteSource.Timeout,"vanilla timeout Clear is natural");
+        // An overdue order cleared by the player or another mod is not a timeout.
+        check(TemporaryWorkPolicy.ClassifyWrite(false,false,true,none)==PriorityWriteSource.External,"old order cleared outside IsPrioritized is external");
+        check(TemporaryWorkPolicy.ClassifyWrite(false,false,false,PriorityWriteSource.Timeout)==PriorityWriteSource.External,"IsPrioritized context without expiry is external");
         check(TemporaryWorkPolicy.ClassifyWrite(false,false,false,PriorityWriteSource.NoWork)==PriorityWriteSource.NoWork,"JobGiver_Work completion Clear is natural");
         check(TemporaryWorkPolicy.ClassifyWrite(false,false,false,PriorityWriteSource.Reset)==PriorityWriteSource.Reset,"mind state reset is engine");
         check(TemporaryWorkPolicy.ClassifyWrite(false,false,false,PriorityWriteSource.Drafted)==PriorityWriteSource.Drafted,"draft is an interruption");

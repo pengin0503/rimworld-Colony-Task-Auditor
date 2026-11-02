@@ -116,4 +116,7 @@
   <CTA_OpenWorkTable>作業割当表を開く</CTA_OpenWorkTable>
   <CTA_SkillRequirement>必要技能：{0} ≥ {1}</CTA_SkillRequirement>
   <CTA_PriorityHookUnavailable>優先依頼の監視を利用できないため、同一内容の手動指示を保護するため支援を停止します。</CTA_PriorityHookUnavailable>
+  <CTA_JumpMaterial>保管資材を確認：{0}</CTA_JumpMaterial>
+  <CTA_JumpRecipeBench>製造台を確認：{0}</CTA_JumpRecipeBench>
+  <CTA_JumpWorker>作業者を選択：{0}（{1}）</CTA_JumpWorker>
 </LanguageData>

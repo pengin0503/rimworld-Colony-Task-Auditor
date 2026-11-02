@@ -67,6 +67,24 @@ namespace Pengin.ColonyTaskAuditor
                     if(list.ButtonText("CTA_JumpWorker".Translate(worker.Pawn.LabelShort,worker.Status.Translate())))
                     {CameraJumper.TryJump(worker.Pawn.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(worker.Pawn);}
             }
+            // Explicit manual override for a verified paused bill. No automatic
+            // unpausing and no write to the work priority system.
+            if(TaskAuditorMod.Settings.RemedyMode!=ActionMode.Off&&detail.Context.Bill!=null&&
+                TaskRemedyPlanner.CanResumePausedBill(detail.Record.Reason,true,audit.PartialScan,
+                    detail.Context.Bill.suspended,true)&&list.ButtonText("CTA_ResumePausedBill".Translate()))
+            {
+                var bill=detail.Context.Bill;
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CTA_ResumeBillConfirm".Translate(),()=>
+                {
+                    audit.Scan();
+                    var current=TaskDetails.Inspect(audit,id,false,0);
+                    if(Find.CurrentMap!=map||!current.Current||current.Context.Bill!=bill||
+                        !TaskRemedyPlanner.CanResumePausedBill(current.Record.Reason,true,audit.PartialScan,
+                            bill.suspended,true))
+                    {Messages.Message("CTA_ActionChanged".Translate(),MessageTypeDefOf.RejectInput,false);return;}
+                    bill.suspended=false;assistance=null;Refresh();
+                }));
+            }
             if(detail.Context.Target!=null&&list.ButtonText("CTA_SelectTarget".Translate()))
             {CameraJumper.TryJump(detail.Context.Target.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(detail.Context.Target);}
             if(list.ButtonText("CTA_OpenWorkTable".Translate()))

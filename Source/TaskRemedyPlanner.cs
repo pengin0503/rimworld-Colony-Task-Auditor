@@ -24,6 +24,10 @@ namespace Pengin.ColonyTaskAuditor
                 default:return RemedyNavigation.None;
             }
         }
+        // A global un-forbid is never permitted: only one observed target and
+        // one explicit confirmation may be changed after fresh verification.
+        public static bool CanUnforbidTarget(string reason,bool confirmed,bool partial,bool forbidden,bool approved)
+        {return approved&&confirmed&&!partial&&forbidden&&reason=="CTA_Forbidden";}
         // A paused bill is an intentional player decision. It may be resumed
         // only by an explicit, current confirmation; never by Auto.
         public static bool CanResumePausedBill(string reason,bool verified,bool partial,bool suspended,bool approved)

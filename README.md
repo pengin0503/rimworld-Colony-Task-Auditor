@@ -8,7 +8,7 @@ Colony Task Auditor は RimWorld 1.7 用の診断MODです。止まったまま�
 
 ### 対策・重要作業・一時支援
 
-一覧の「詳細・対策」で、原因別の候補対策、必要材料と許可・禁止在庫、技能・割当・到達性を確認できます。材料の選択肢は合算せず、搬送中や所持品まで確認できたとは断定しません。対象の選択と作業割当表への移動もできます。
+一覧の「詳細・対策」で、原因別の候補対策、必要材料と許可・禁止在庫、技能・割当・到達性を確認できます。材料の選択肢は合算せず、搬送中や所持品まで確認できたとは断定しません。対象の選択と作業割当表への移動ができます。資材や製造台、作業候補者への直接移動に加え、停止中の製造指示の確認付き再開と、確定診断された対象1件に限る確認付き禁止解除ができます。
 
 「重要登録」した対象は、個別の短い警告閾値を設定し、「重要のみ」で絞り込めます。登録はマップ・対象IDごとに保存し、完了・削除時に解除します。
 
@@ -67,7 +67,7 @@ MODを外す前に一時支援をOFFにしてください。所有している�
 
 ### Remedies, important tasks and temporary support
 
-Use Details to inspect cause-specific advice, ingredient alternatives, permitted/forbidden stocks, skills, assignment and access. Ingredient alternatives must not be added together; these counts do not prove inventory or delivery status. You can select the target or open the work table.
+Use Details to inspect cause-specific advice, ingredient alternatives, permitted/forbidden stocks, skills, assignment and access. Ingredient alternatives must not be added together; these counts do not prove inventory or delivery status. You can select the target, jump to relevant stocks, benches or workers, and open the work table. Confirmed paused bills can be resumed and a verified forbidden target can be individually unforbidden, only after explicit approval and fresh checks.
 
 Mark important tasks, assign shorter individual thresholds and filter to important entries. Registrations use map/task identities and are removed on completion or deletion.
 

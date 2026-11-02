@@ -31,6 +31,16 @@ static class RemedyTests
             throw new Exception("partial scan must not resume");
         if(TaskRemedyPlanner.CanResumePausedBill("CTA_Waiting",true,false,true,true))
             throw new Exception("normal queue must not resume");
-        Console.WriteLine("PASS 23 remedy policy scenarios");
+        if(!TaskRemedyPlanner.CanUnforbidTarget("CTA_Forbidden",true,false,true,true))
+            throw new Exception("explicitly confirmed forbidden target can be released");
+        if(TaskRemedyPlanner.CanUnforbidTarget("CTA_Forbidden",true,false,true,false))
+            throw new Exception("forbidden work requires manual confirmation");
+        if(TaskRemedyPlanner.CanUnforbidTarget("CTA_Forbidden",false,false,true,true))
+            throw new Exception("uncertain forbidden cause may not un-forbid");
+        if(TaskRemedyPlanner.CanUnforbidTarget("CTA_Forbidden",true,true,true,true))
+            throw new Exception("partial scan may not un-forbid");
+        if(TaskRemedyPlanner.CanUnforbidTarget("CTA_MaterialMissing",true,false,true,true))
+            throw new Exception("unrelated cause may not un-forbid");
+        Console.WriteLine("PASS 28 remedy policy scenarios");
     }
 }

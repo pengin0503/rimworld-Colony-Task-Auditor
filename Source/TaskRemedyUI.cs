@@ -67,6 +67,27 @@ namespace Pengin.ColonyTaskAuditor
                     if(list.ButtonText("CTA_JumpWorker".Translate(worker.Pawn.LabelShort,worker.Status.Translate())))
                     {CameraJumper.TryJump(worker.Pawn.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(worker.Pawn);}
             }
+            var forbiddenTarget=detail.Context.Target;
+            if(TaskAuditorMod.Settings.RemedyMode!=ActionMode.Off&&forbiddenTarget!=null&&
+                TaskRemedyPlanner.CanUnforbidTarget(detail.Record.Reason,
+                    detail.Record.Confidence=="CTA_Confirmed",audit.PartialScan,
+                    forbiddenTarget.IsForbidden(Faction.OfPlayer),true)&&
+                list.ButtonText("CTA_UnforbidTarget".Translate(forbiddenTarget.LabelShort)))
+            {
+                var shown=forbiddenTarget;
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CTA_UnforbidConfirm".Translate(shown.LabelShort),()=>
+                {
+                    audit.Scan();
+                    var latest=TaskDetails.Inspect(audit,id,false,0);
+                    if(Find.CurrentMap!=map||TaskAuditorMod.Settings.RemedyMode==ActionMode.Off||
+                        !latest.Current||latest.Context.Target!=shown||!shown.Spawned||shown.Map!=map||
+                        !TaskRemedyPlanner.CanUnforbidTarget(latest.Record.Reason,
+                            latest.Record.Confidence=="CTA_Confirmed",audit.PartialScan,
+                            shown.IsForbidden(Faction.OfPlayer),true))
+                    {Messages.Message("CTA_ActionChanged".Translate(),MessageTypeDefOf.RejectInput,false);return;}
+                    shown.SetForbidden(false,false);assistance=null;Refresh();
+                }));
+            }
             // Explicit manual override for a verified paused bill. No automatic
             // unpausing and no write to the work priority system.
             if(TaskAuditorMod.Settings.RemedyMode!=ActionMode.Off&&detail.Context.Bill!=null&&

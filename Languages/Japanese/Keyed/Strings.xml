@@ -112,6 +112,12 @@
   <CTA_MaxAssistance>マップごとの同時依頼上限：{0}</CTA_MaxAssistance>
   <CTA_RevokeAll>このマップの自動支援許可を全解除</CTA_RevokeAll>
   <CTA_ActionHistory>最近の操作履歴（このマップ）</CTA_ActionHistory>
+  <CTA_PriorityWriteTimeout>優先指示がバニラ側で期限切れ。解除し、Auto許可は維持</CTA_PriorityWriteTimeout>
+  <CTA_PriorityWriteNoWork>バニラが優先作業をこれ以上見つけられません（完了または実行不可）。解除し、Auto許可は維持</CTA_PriorityWriteNoWork>
+  <CTA_PriorityWriteReset>ゲームがポーンの状態をリセット（ダウン・捕縛・所属変更など）。解除し、Auto許可は維持</CTA_PriorityWriteReset>
+  <CTA_PriorityWriteDrafted>徴兵により解除。Auto許可は維持</CTA_PriorityWriteDrafted>
+  <CTA_PriorityWriteTargetChanged>優先対象がゲーム側で取り消されました。解除し、Auto許可は維持</CTA_PriorityWriteTargetChanged>
+  <CTA_PriorityWriteExternal>プレイヤー・他MOD・判別不能な呼出元が優先作業を変更。解除し、Auto許可を取り消し</CTA_PriorityWriteExternal>
   <CTA_SelectTarget>対象を選択して設定を確認</CTA_SelectTarget>
   <CTA_OpenWorkTable>作業割当表を開く</CTA_OpenWorkTable>
   <CTA_SkillRequirement>必要技能：{0} ≥ {1}</CTA_SkillRequirement>

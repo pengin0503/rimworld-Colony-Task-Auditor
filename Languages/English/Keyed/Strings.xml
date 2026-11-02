@@ -112,6 +112,12 @@
   <CTA_MaxAssistance>Simultaneous request cap per map: {0}</CTA_MaxAssistance>
   <CTA_RevokeAll>Revoke all automatic support permissions on this map</CTA_RevokeAll>
   <CTA_ActionHistory>Recent action history (map-local)</CTA_ActionHistory>
+  <CTA_PriorityWriteTimeout>prioritized order expired in vanilla; released, Auto permission kept</CTA_PriorityWriteTimeout>
+  <CTA_PriorityWriteNoWork>vanilla found no further prioritized job (finished or unavailable); released, Auto permission kept</CTA_PriorityWriteNoWork>
+  <CTA_PriorityWriteReset>pawn state reset by the game (e.g. downed, captured, faction change); released, Auto permission kept</CTA_PriorityWriteReset>
+  <CTA_PriorityWriteDrafted>pawn drafted; released, Auto permission kept</CTA_PriorityWriteDrafted>
+  <CTA_PriorityWriteTargetChanged>prioritized target removed by the game; released, Auto permission kept</CTA_PriorityWriteTargetChanged>
+  <CTA_PriorityWriteExternal>priority changed by the player, another mod or an unidentified source; released and Auto permission withdrawn</CTA_PriorityWriteExternal>
   <CTA_SelectTarget>Select target and inspect settings</CTA_SelectTarget>
   <CTA_OpenWorkTable>Open work assignment table</CTA_OpenWorkTable>
   <CTA_SkillRequirement>Required skill: {0} ≥ {1}</CTA_SkillRequirement>

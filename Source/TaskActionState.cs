@@ -42,12 +42,18 @@ namespace Pengin.ColonyTaskAuditor
         public List<string> History=new List<string>();
         public int LastAction=-600000;
         int autoScan=-1;bool faulted;
-        public void ExternalPriorityWrite(Pawn pawn)
+        public void ExternalPriorityWrite(Pawn pawn){ExternalPriorityWrite(pawn,PriorityWriteSource.External);}
+        // The request is always released and never rewritten. Auto permission is withdrawn
+        // only when the write is not a positively identified vanilla end (#28).
+        public void ExternalPriorityWrite(Pawn pawn,PriorityWriteSource source)
         {
-            foreach(var entry in Active.Where(a=>a.Pawn==pawn).ToList())
+            if(source==PriorityWriteSource.Owned)return;
+            for(int i=Active.Count-1;i>=0;i--)
             {
-                var watch=FindWatch(entry.TaskId);if(watch!=null)watch.AutoAssist=false;
-                Active.Remove(entry);Revision++;AddHistory("external priority write: "+entry.TaskId);
+                var entry=Active[i];if(entry.Pawn!=pawn)continue;
+                var watch=FindWatch(entry.TaskId);
+                if(watch!=null&&!TemporaryWorkPolicy.KeepsAutoPermission(source))watch.AutoAssist=false;
+                Active.RemoveAt(i);Revision++;AddHistory(entry.TaskId+" "+TemporaryWorkPolicy.HistoryKey(source));
             }
         }
         public void AddHistory(string text){History.Add(Find.TickManager.TicksGame+": "+text);while(History.Count>20)History.RemoveAt(0);}
@@ -66,6 +72,8 @@ namespace Pengin.ColonyTaskAuditor
                 var pawn=entry.Pawn;var priority=pawn==null||pawn.mindState==null?null:pawn.mindState.priorityWork;
                 bool owns=pawn!=null&&pawn.Spawned&&pawn.Map==map&&priority!=null&&priority.IsPrioritized&&entry.Giver!=null&&TemporaryWorkPolicy.ClearOwned(entry.RequestTick,entry.Giver.defName,new[]{entry.Cell.x,entry.Cell.z},
                     TemporaryWorkAssistance.RequestTick(priority),priority.WorkGiver==null?null:priority.WorkGiver.defName,new[]{priority.Cell.x,priority.Cell.z});
+                // IsPrioritized may itself run vanilla's timeout Clear, already handled by the hook.
+                if(!Active.Contains(entry))continue;
                 var watch=FindWatch(entry.TaskId);var record=audit.FindRecord(entry.TaskId);
                 bool absent=!audit.PartialScan&&audit.LastScanTick>0&&(record==null||record.LastSeen!=audit.LastScanTick);
                 bool priorityChanged=pawn!=null&&pawn.workSettings!=null&&entry.Work!=null&&pawn.workSettings.GetPriority(entry.Work)!=entry.ExpectedPriority;

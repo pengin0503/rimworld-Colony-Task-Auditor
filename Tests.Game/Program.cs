@@ -33,7 +33,10 @@ class Program
             record=new AuditRecord();watch=null;settings=null;
             Scribe.loader.InitLoading(path);
             record.ExposeData();
-            Scribe_Deep.Look(ref watch,"watch");Scribe_Deep.Look(ref settings,"settings");
+            // Same LoadingVars pass as Scribe_Deep, without ScribeExtractor's BackCompatibility
+            // type lookup, which needs a running game.
+            watch=new TaskWatchEntry();Scribe.EnterNode("watch");try{watch.ExposeData();}finally{Scribe.ExitNode();}
+            settings=new AuditorSettings();Scribe.EnterNode("settings");try{settings.ExposeData();}finally{Scribe.ExitNode();}
             Scribe.loader.FinalizeLoading();
             if(watch.Info.Id!="bill:fixture"||watch.Info.MapId!=7||watch.Info.Threshold!=6000||!watch.Info.AutoAssist||settings.RemedyMode!=ActionMode.Auto||settings.AssistanceDuration!=5000)
                 throw new Exception("Scribe watch/settings round trip failed");
@@ -43,6 +46,19 @@ class Program
             if(!record.Clock.IsStalled(100)||record.Clock.FirstSeen!=10||record.Clock.LastProgress!=10)
                 throw new Exception("Scribe progress continuity failed");
             Console.WriteLine("PASS real-game Scribe audit record round trip and progress continuity");
+            // #28: the vanilla members the priority-write attribution binds to.
+            var nonPublic=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+            var timeout=typeof(PriorityWork).GetField("Timeout",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+            if(timeout==null||!timeout.IsLiteral||(int)timeout.GetRawConstantValue()!=30000)throw new Exception("PriorityWork timeout changed");
+            foreach(string field in new[]{"pawn","prioritizedCell","prioritizeTick"})
+                if(typeof(PriorityWork).GetField(field,nonPublic)==null)throw new Exception("PriorityWork field missing: "+field);
+            if(typeof(PriorityWork).GetProperty("IsPrioritized")?.GetGetMethod()==null||
+                typeof(RimWorld.JobGiver_Work).GetMethod("TryIssueJobPackage",new[]{typeof(Pawn),typeof(Verse.AI.JobIssueParams)})==null||
+                typeof(Verse.AI.Pawn_MindState).GetMethod("Reset",new[]{typeof(bool),typeof(bool),typeof(bool)})==null||
+                typeof(RimWorld.Pawn_DraftController).GetProperty("Drafted")?.GetSetMethod()==null||
+                typeof(Verse.AI.ThingCountTracker).GetMethod("InterruptEnroutePawns",new[]{typeof(Pawn)})==null)
+                throw new Exception("vanilla priority-end caller changed");
+            Console.WriteLine("PASS real-game PriorityWork API and vanilla priority-end callers match the attribution hooks");
         }
         finally {if(File.Exists(path))File.Delete(path);}
     }

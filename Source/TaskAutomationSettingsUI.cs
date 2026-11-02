@@ -29,7 +29,14 @@ namespace Pengin.ColonyTaskAuditor
                 var state=map.GetComponent<TaskActionState>();
                 if(list.ButtonText("CTA_RevokeAll".Translate()))
                 {foreach(var entry in state.Watches)entry.Info.AutoAssist=false;state.Revision++;}
-                list.Label("CTA_ActionHistory".Translate());foreach(var entry in state.History)list.Label(entry);
+                list.Label("CTA_ActionHistory".Translate());
+                foreach(var entry in state.History)
+                {
+                    // Entries may end with a translation key (priority write source).
+                    int reason=entry.LastIndexOf(" CTA_",System.StringComparison.Ordinal);
+                    string key=reason<0?null:entry.Substring(reason+1);
+                    list.Label(key==null||!key.CanTranslate()?entry:entry.Substring(0,reason+1)+key.Translate().ToString());
+                }
             }
             height=list.CurHeight+20;list.End();Widgets.EndScrollView();
         }

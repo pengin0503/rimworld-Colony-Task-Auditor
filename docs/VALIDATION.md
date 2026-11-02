@@ -176,3 +176,23 @@ Review follow-up (PR #23):
 - The pure model's five safety cases were observed RED→GREEN in GitHub Actions; includes refusal without player confirmation, wrong reason or incomplete audit.
 - No automatic bill resume, no PriorityWork API calls, no forced Job and no changes to the reserved #28 ownership logic.
 - Actual game UI interaction and full save/load still require #7 acceptance. CI compile does not prove gameplay.
+
+## Review remediation #28 (2026-11-02, branch: ccr-df0edeac-pkmfta)
+Baseline main `1e05247`. Evidence: R2 `Game-Linux/Version.txt` = `1.7.4985 rev1269`; full ILSpy decompilation of `Assembly-CSharp.dll` searched for every `PriorityWork` use. Nothing from the game is committed or packaged.
+
+### Vanilla call sites (the original hypothesis is confirmed)
+- `Set`: only `Pawn_JobTracker.TryTakeOrderedJobPrioritizedWork` (an ordered "prioritize" job).
+- `Clear`: `PriorityWork.IsPrioritized` getter after `Timeout`=30000 ticks; `JobGiver_Work.TryIssueJobPackage` (emergency branch) when no prioritized job remains; `Pawn_MindState.Reset`; `ThingCountTracker.InterruptEnroutePawns`; `ClearPrioritizedWorkAndJobQueue` from the `Drafted` setter, `LordToil_Ritual`, `JobDriver_EnterPortal` and the player's "clear prioritized work" gizmo.
+- Cause: one postfix on Set and Clear withdrew Auto permission for every non-owned write, so vanilla's natural timeout and completion Clears were treated as manual.
+
+### Fix
+- Clear prefix reads the pre-clear state; a Clear is a Timeout only when it runs inside the `IsPrioritized` getter **and** the order is overdue (an overdue order cleared by the player/another mod is External — found by the Codex PR review, since `AssistanceDuration` may exceed 30000). Void prefixes + finalizers on the `IsPrioritized` getter, JobGiver_Work (emergency only), Pawn_MindState.Reset, the Drafted setter and InterruptEnroutePawns attribute a Clear to that caller for the matching pawn.
+- Natural/engine sources release the request and keep Auto permission. Every non-owned Set and every unidentified Clear (gizmo, other mods, ritual, portal, ordinary job search) is External: released, permission withdrawn. Nothing is rewritten or restored. The source is shown, localized, in the action history.
+
+### Checks run
+- `Tests`: 31 attribution assertions (natural timeout/no-work/reset/draft/target change keep permission; unidentified Clear and any non-owned Set — including same-tick/same-value and inside engine callers — withdraw it; EN/JA keys).
+- Real-game fixture executed locally against the R2 DLLs: audit record/watch/settings Scribe round trip (its watch/settings load previously failed outside a running game in `ScribeExtractor`'s BackCompatibility lookup and had only been compiled; it now uses the same LoadingVars pass directly) and the PriorityWork API/caller signatures (Timeout literal 30000).
+- Scratch probe (not committed) with Lib.Harmony 2.4.3 and 3.0.0-rc.4 on .NET 10 against the real DLL: all seven patches apply (incl. the `IsPrioritized` getter) via the mod's reflection installer; patched `Clear` runs with private-field injection; a frame is popped by the finalizer even when the patched `Pawn_MindState.Reset` throws. Lib.Harmony 2.4.1 refuses CoreCLR 10.
+- Release build against public references and the real 1.7.4985 DLLs; public `Tests.Game` compile; metadata/translation/package checks.
+- Review round 1 fixed: NoWork narrowed to the emergency giver; thread-static context; no duplicate history when our own `IsPrioritized` check runs vanilla's timeout Clear. Round 2: hot-path cost is one list push/pop per job search; no new save fields.
+- **Not verified:** in-game priority orders end to end (actual think-tree runs, gizmo, draft, rituals), the Harmony version shipped by the Harmony mod for 1.7, other priority mods, 270+ MODs, TPS. Remains under #7.

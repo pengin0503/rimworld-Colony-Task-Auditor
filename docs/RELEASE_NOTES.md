@@ -1,3 +1,8 @@
+# Unreleased (development)
+
+- Fixed (#28): a priority order ended by vanilla itself (timeout, no more prioritized work, pawn state reset, draft, target removed) no longer withdraws the task's Auto permission. Player, other-mod or unidentified changes still release the request and withdraw it; the reason is shown in the action history. / バニラによる優先作業の自然終了でAuto許可を失わないよう修正。プレイヤー・他MOD・判別不能な変更は従来どおり解除して許可を取り消し、理由を履歴に表示。
+- In-game acceptance remains under #7.
+
 # 1.1.0 actionable automation (development)
 
 - Cause-specific remedies, material/worker diagnostics and settings navigation.

@@ -20,6 +20,14 @@ namespace Pengin.ColonyTaskAuditor
         public List<Thing> MaterialTargets=new List<Thing>();
         public List<Building_WorkTable> RecipeTargets=new List<Building_WorkTable>();
         public bool Current;
+        // This instance is scoped to one Inspect request, never reused across scans.
+        readonly Dictionary<ThingDef,MaterialCount> materialCache=new Dictionary<ThingDef,MaterialCount>();
+        readonly HashSet<ThingDef> recipeChecked=new HashSet<ThingDef>();
+        sealed class MaterialCount
+        {
+            public int Permitted,Forbidden;
+            public readonly List<Thing> Targets=new List<Thing>();
+        }
         internal TaskContext Context;
         public static TaskDetails Inspect(TaskAuditComponent audit,string id,bool includeMaterials=true,int workerLimit=64)
         {
@@ -86,20 +94,27 @@ namespace Pengin.ColonyTaskAuditor
         }
         static void AddMaterial(TaskDetails result,Map map,ThingDef def,int needed)
         {
-            int permitted=0,forbidden=0,scanned=0;
-            foreach(var thing in map.listerThings.ThingsOfDef(def))
+            MaterialCount material;
+            if(!result.materialCache.TryGetValue(def,out material))
             {
-                if(++scanned>12000)break;
-                if(thing.IsForbidden(Faction.OfPlayer))forbidden+=thing.stackCount;
-                else
+                material=new MaterialCount();int scanned=0;
+                foreach(var thing in map.listerThings.ThingsOfDef(def))
                 {
-                    permitted+=thing.stackCount;
-                    if(result.MaterialTargets.Count<8&&!result.MaterialTargets.Contains(thing))
-                        result.MaterialTargets.Add(thing);
+                    if(++scanned>12000)break;
+                    if(thing.IsForbidden(Faction.OfPlayer))material.Forbidden+=thing.stackCount;
+                    else
+                    {
+                        material.Permitted+=thing.stackCount;
+                        if(material.Targets.Count<8)material.Targets.Add(thing);
+                    }
                 }
+                result.materialCache[def]=material;
             }
-            result.Materials.Add("CTA_MaterialDetail".Translate(def.LabelCap,needed,permitted,forbidden));
-            if(needed<=permitted||result.Recipes.Count>=8)return;
+            foreach(var t in material.Targets)
+                if(result.MaterialTargets.Count<8&&!result.MaterialTargets.Contains(t))
+                    result.MaterialTargets.Add(t);
+            result.Materials.Add("CTA_MaterialDetail".Translate(def.LabelCap,needed,material.Permitted,material.Forbidden));
+            if(needed<=material.Permitted||result.Recipes.Count>=8||!result.recipeChecked.Add(def))return;
             foreach(var bench in map.listerBuildings.allBuildingsColonist.OfType<Building_WorkTable>().Take(32))
                 foreach(var recipe in bench.def.AllRecipes.Where(r=>r.products.Any(p=>p.thingDef==def)).Take(2))
                 {

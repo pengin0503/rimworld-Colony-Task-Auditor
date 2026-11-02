@@ -101,6 +101,9 @@ namespace Pengin.ColonyTaskAuditor
             // Auto additionally requires a persisted confirmed Ready diagnosis. A preview
             // alone can offer Confirm, but cannot promote an unknown cause to Auto.
             var record=audit.Records.FirstOrDefault(r=>r.Id==shown.TaskId);
+            var remedy=TaskRemedyPlanner.Plan(automatic?(record==null?"CTA_Unknown":record.Reason):"CTA_Ready",
+                !automatic||(record!=null&&record.Confidence=="CTA_Confirmed"),audit.PartialScan,record==null,record!=null&&record.Held,live.Ready);
+            if(!remedy.CanExecute||(automatic&&!remedy.CanAutomate))return false;
             bool known=record!=null&&record.Reason=="CTA_Ready"&&record.Confidence=="CTA_Confirmed";
             if(automatic&&!known)return false;
             if(!TemporaryWorkPolicy.CanStart(facts,settings.AssistanceMode,automatic,watch!=null,watch!=null&&watch.AutoAssist,now,state.LastAction,settings.Cooldown,state.Active.Count,settings.MaxAssistance))return false;

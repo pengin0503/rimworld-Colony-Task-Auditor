@@ -695,7 +695,24 @@ namespace Pengin.ColonyTaskAuditor
             // A capped or failed scan cannot prove absence: unseen records keep their clocks.
             // The rotation-aware gap lets them age across windows only between two eligible,
             // unchanged observations; they never alert until observed again.
-            records=old.Values.Where(r=>seen.Contains(r.Id)||!completeCategories.Contains(r.Category))
+            // Published records are already sorted. When the tracked IDs and sort
+            // keys have not changed, carry that order forward instead of sorting
+            // thousands of records every 5,000 ticks. A new/changed identity falls
+            // back to the original canonical sort, preserving all prior semantics.
+            bool unchangedOrder=old.Count==records.Count;
+            var ordered=new List<AuditRecord>(records.Count);
+            if(unchangedOrder)
+            {
+                foreach(var previous in records)
+                {
+                    AuditRecord next;
+                    if(previous==null||!old.TryGetValue(previous.Id,out next)||
+                        next.Category!=previous.Category||next.FirstSeen!=previous.FirstSeen)
+                    {unchangedOrder=false;break;}
+                    if(seen.Contains(next.Id)||!completeCategories.Contains(next.Category))ordered.Add(next);
+                }
+            }
+            records=unchangedOrder?ordered:old.Values.Where(r=>seen.Contains(r.Id)||!completeCategories.Contains(r.Category))
                 .OrderBy(r=>r.Category).ThenBy(r=>r.FirstSeen).ToList();
             // Disabling a monitor removes its historical state even when another category is capped.
             records.RemoveAll(r => (r.Category=="designation"&&!settings.Designations) ||

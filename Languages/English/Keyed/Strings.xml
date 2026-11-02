@@ -127,4 +127,6 @@
   <CTA_JumpWorker>Select possible worker: {0} ({1})</CTA_JumpWorker>
   <CTA_ResumePausedBill>Resume paused production bill (requires confirmation)</CTA_ResumePausedBill>
   <CTA_ResumeBillConfirm>Resume this manually paused production bill? This will change the bill's suspended status; the mod will not assign a pawn or modify work priorities.</CTA_ResumeBillConfirm>
+  <CTA_UnforbidTarget>Unforbid this target: {0}</CTA_UnforbidTarget>
+  <CTA_UnforbidConfirm>Allow work on {0}? Only this individual target will be unforbidden; no work priorities or jobs will be changed.</CTA_UnforbidConfirm>
 </LanguageData>

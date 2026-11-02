@@ -91,4 +91,28 @@
   <CTA_WatchAdd>重要登録</CTA_WatchAdd>
   <CTA_WatchRemove>登録解除</CTA_WatchRemove>
   <CTA_WatchThreshold>個別警告閾値：{0}日</CTA_WatchThreshold>
+  <CTA_AllowAutoTarget>この重要作業の自動支援を許可</CTA_AllowAutoTarget>
+  <CTA_PriorityConflict>優先度管理MODを検出しました。自動支援を停止します。確認付き依頼でも全安全条件の検証が必要です。</CTA_PriorityConflict>
+  <CTA_PreviewWorker>1回の優先依頼をプレビュー：{0}</CTA_PreviewWorker>
+  <CTA_AssistanceBlocked>支援不可：完全で最新の走査、停滞中の実行可能な対象、安全に待機する割当済み入植者、手動優先・予約指示なし、対応する実行可能なバニラ作業が必要です。既知の阻害原因は提案のみです。</CTA_AssistanceBlocked>
+  <CTA_AssistancePreview>{0}に{1}を最大{2}ゲーム時間優先するよう依頼します。現在のJob・作業表の優先度は変更しません。実行依頼であり完成の保証ではありません。</CTA_AssistancePreview>
+  <CTA_ConfirmAssistance>優先依頼（確認）</CTA_ConfirmAssistance>
+  <CTA_AssistanceConfirm>{0}に{1}の一時的な優先を依頼しますか？直前に条件を再検証します。現在の作業・手動指示・作業優先度は維持します。</CTA_AssistanceConfirm>
+  <CTA_ActionChanged>条件変更・許可撤回・クールダウン・上限により実行できません。プレビューを更新してください。</CTA_ActionChanged>
+  <CTA_AutomationSettings>自動化・安全設定</CTA_AutomationSettings>
+  <CTA_AutomationSafety>初期設定は確認付きです。自動支援には重要登録・対象の明示許可・最新の確定した実行可能作業・優先度管理MODとの競合なしが必要です。対応するバニラ作業と待機中の作業者に限定します。OFFで所有する依頼を次Tickに解除します。</CTA_AutomationSafety>
+  <CTA_RemedyMode>原因別対策：{0}</CTA_RemedyMode>
+  <CTA_AssistanceMode>重要監視・一時支援：{0}</CTA_AssistanceMode>
+  <CTA_ModeOff>OFF</CTA_ModeOff>
+  <CTA_ModeConfirm>確認付き</CTA_ModeConfirm>
+  <CTA_ModeAuto>自動（対象許可が必要）</CTA_ModeAuto>
+  <CTA_WatchDefault>新規重要対象の警告閾値：{0}日</CTA_WatchDefault>
+  <CTA_AssistanceDuration>優先依頼の期限：{0}ゲーム時間</CTA_AssistanceDuration>
+  <CTA_Cooldown>操作クールダウン：{0}日</CTA_Cooldown>
+  <CTA_MaxAssistance>マップごとの同時依頼上限：{0}</CTA_MaxAssistance>
+  <CTA_RevokeAll>このマップの自動支援許可を全解除</CTA_RevokeAll>
+  <CTA_ActionHistory>最近の操作履歴（このマップ）</CTA_ActionHistory>
+  <CTA_SelectTarget>対象を選択して設定を確認</CTA_SelectTarget>
+  <CTA_OpenWorkTable>作業割当表を開く</CTA_OpenWorkTable>
+  <CTA_SkillRequirement>必要技能：{0} ≥ {1}</CTA_SkillRequirement>
 </LanguageData>

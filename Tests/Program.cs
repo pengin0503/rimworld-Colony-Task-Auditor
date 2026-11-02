@@ -7,7 +7,7 @@ static class Program
     static void Check(bool value, string name) { if (!value) throw new Exception(name); tests++; }
     static void Main()
     {
-        RemedyTests.Run();WatchTests.Run();
+        RemedyTests.Run();WatchTests.Run();AssistanceTests.Run();
         Check(BlockerEvidence.Materials(5,0)=="CTA_MaterialMissing","missing delivered materials are diagnosed");
         Check(BlockerEvidence.Materials(5,5)=="CTA_MaterialDelivery","available material still needs delivery");
         Check(BlockerEvidence.Materials(0,0)==null,"completed delivery is not a shortage");

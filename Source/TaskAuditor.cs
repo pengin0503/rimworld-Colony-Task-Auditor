@@ -98,6 +98,8 @@ namespace Pengin.ColonyTaskAuditor
             MaxZoneCellsTotal = 40000, MaxAnimals = 1000;
         private List<AuditRecord> records = new List<AuditRecord>();
         public IReadOnlyList<AuditRecord> Records { get { return records; } }
+        internal int ProofBudget;
+        internal AuditRecord FindRecord(string id){AuditRecord r;return recordLookup.TryGetValue(id,out r)?r:null;}
         public int Threshold(AuditRecord record)
         {return TaskWatchlist.Threshold(map.GetComponent<TaskActionState>().FindWatch(record.Id),Math.Max(1,TaskAuditorMod.Settings.WarningDays)*60000,TaskAuditorMod.Settings.AssistanceMode);}
         public int LastScanTick { get; private set; }
@@ -707,8 +709,20 @@ namespace Pengin.ColonyTaskAuditor
                 {r.Clock.Notified=true;alerts++;}
             if(alerts>0) Messages.Message("CTA_Notification".Translate(alerts),MessageTypeDefOf.NegativeEvent,false);
             Overdue=records.Where(r=>seen.Contains(r.Id)&&r.Clock.ReachedThreshold(Threshold(r))).ToList();
-            LastScanTick=now;
+            LastScanTick=now;ProofBudget=64;
             map.GetComponent<TaskActionState>().Prune(records.Select(r=>r.Id),!PartialScan);
+            if(!PartialScan&&settings.AssistanceMode!=ActionMode.Off)
+            {
+                TemporaryWorkAssistance.PublishReadyFacts(this);
+                int ready=0;
+                foreach(var watch in map.GetComponent<TaskActionState>().Watches.Take(4))
+                {
+                    var record=FindRecord(watch.Info.Id);
+                    if(record!=null&&record.Reason=="CTA_Ready"&&!record.Clock.Notified&&settings.Notifications)
+                    {record.Clock.Notified=true;ready++;}
+                }
+                if(ready>0)Messages.Message("CTA_Notification".Translate(ready),MessageTypeDefOf.NegativeEvent,false);
+            }
         }
 
         private void ObserveZone(Zone_Growing zone,Action<string,string,string,IntVec3,float,TaskContext,bool> observe,HashSet<string> completeCategories)

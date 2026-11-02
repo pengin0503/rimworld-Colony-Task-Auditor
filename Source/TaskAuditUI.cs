@@ -160,10 +160,11 @@ namespace Pengin.ColonyTaskAuditor
     public sealed class TaskAuditorMod : Mod
     {
         public static AuditorSettings Settings;
+        public static TaskAuditorMod Instance;
         readonly TaskAuditListView view=new TaskAuditListView();
         public TaskAuditorMod(ModContentPack pack) : base(pack)
         {
-            Settings = GetSettings<AuditorSettings>();
+            Instance=this;Settings = GetSettings<AuditorSettings>();
             BillProgressHooks.Install();
         }
         public override string SettingsCategory() { return "Colony Task Auditor"; }
@@ -184,6 +185,8 @@ namespace Pengin.ColonyTaskAuditor
             list.CheckboxLabeled("CTA_ShowAlert".Translate(), ref Settings.ShowAlert);
             list.End();
 
+            if(Widgets.ButtonText(new Rect(rect.x+230,rect.y+318,220,28),"CTA_AutomationSettings".Translate()))
+                Find.WindowStack.Add(new Window_TaskAutomationSettings());
             Map current = Find.CurrentMap;
             if (current == null) return;
             TaskAuditComponent audit = current.GetComponent<TaskAuditComponent>();

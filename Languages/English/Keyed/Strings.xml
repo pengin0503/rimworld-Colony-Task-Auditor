@@ -91,4 +91,28 @@
   <CTA_WatchAdd>Mark important</CTA_WatchAdd>
   <CTA_WatchRemove>Unmark</CTA_WatchRemove>
   <CTA_WatchThreshold>Individual threshold: {0} days</CTA_WatchThreshold>
+  <CTA_AllowAutoTarget>Allow automatic support for this important task</CTA_AllowAutoTarget>
+  <CTA_PriorityConflict>A work-priority management MOD is detected. Auto support is disabled; confirmed priority requests still require all safety checks.</CTA_PriorityConflict>
+  <CTA_PreviewWorker>Preview one priority request: {0}</CTA_PreviewWorker>
+  <CTA_AssistanceBlocked>Support blocked: requires a complete current scan, a stalled eligible task, a safe idle enabled colonist, no manual priority/queue, and a supported executable vanilla work giver. Known blockers are advisory.</CTA_AssistanceBlocked>
+  <CTA_AssistancePreview>Request {0} to prioritize {1} for at most {2} game hours. No current job is interrupted and no work-table priority is changed. This requests work; completion is not guaranteed.</CTA_AssistancePreview>
+  <CTA_ConfirmAssistance>Request priority (confirmation)</CTA_ConfirmAssistance>
+  <CTA_AssistanceConfirm>Ask {0} to prioritize {1} temporarily? Conditions are rechecked now. Current work, manual orders and work priorities are preserved.</CTA_AssistanceConfirm>
+  <CTA_ActionChanged>Conditions changed, permission was revoked, or the cooldown/cap prevents the action. Refresh the preview.</CTA_ActionChanged>
+  <CTA_AutomationSettings>Automation / safety settings</CTA_AutomationSettings>
+  <CTA_AutomationSafety>Defaults: Confirm. Auto support requires an important task, its explicit permission, a fresh confirmed executable job, and no priority-management conflict. Only supported vanilla jobs and idle workers are considered. OFF clears owned requests on the next tick.</CTA_AutomationSafety>
+  <CTA_RemedyMode>Cause-specific remedies: {0}</CTA_RemedyMode>
+  <CTA_AssistanceMode>Important monitoring / temporary support: {0}</CTA_AssistanceMode>
+  <CTA_ModeOff>OFF</CTA_ModeOff>
+  <CTA_ModeConfirm>Confirm</CTA_ModeConfirm>
+  <CTA_ModeAuto>Automatic (target permission required)</CTA_ModeAuto>
+  <CTA_WatchDefault>New important-task threshold: {0} days</CTA_WatchDefault>
+  <CTA_AssistanceDuration>Priority request duration: {0} game hours</CTA_AssistanceDuration>
+  <CTA_Cooldown>Action cooldown: {0} days</CTA_Cooldown>
+  <CTA_MaxAssistance>Simultaneous request cap per map: {0}</CTA_MaxAssistance>
+  <CTA_RevokeAll>Revoke all automatic support permissions on this map</CTA_RevokeAll>
+  <CTA_ActionHistory>Recent action history (map-local)</CTA_ActionHistory>
+  <CTA_SelectTarget>Select target and inspect settings</CTA_SelectTarget>
+  <CTA_OpenWorkTable>Open work assignment table</CTA_OpenWorkTable>
+  <CTA_SkillRequirement>Required skill: {0} ≥ {1}</CTA_SkillRequirement>
 </LanguageData>

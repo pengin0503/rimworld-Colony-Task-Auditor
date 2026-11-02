@@ -19,7 +19,7 @@ namespace Pengin.ColonyTaskAuditor
         public List<string> Materials=new List<string>(),Recipes=new List<string>();
         public bool Current;
         internal TaskContext Context;
-        public static TaskDetails Inspect(TaskAuditComponent audit,string id)
+        public static TaskDetails Inspect(TaskAuditComponent audit,string id,bool includeMaterials=true,int workerLimit=64)
         {
             var result=new TaskDetails();TaskContext ctx;
             var r=audit.Records.FirstOrDefault(x=>x.Id==id);result.Record=r;
@@ -35,7 +35,7 @@ namespace Pengin.ColonyTaskAuditor
                 if(types.Count==1)work=types[0];
             }
             result.Work=work;
-            foreach(var pawn in map.mapPawns.AllPawnsSpawned.Where(p=>p.IsColonistPlayerControlled||p.IsColonyMechPlayerControlled).Take(64))
+            foreach(var pawn in map.mapPawns.AllPawnsSpawned.Where(p=>p.IsColonistPlayerControlled||p.IsColonyMechPlayerControlled).Take(workerLimit))
             {
                 string status="CTA_WorkerCandidate";
                 if(pawn.IsColonyMechPlayerControlled)status="CTA_WorkerSpecial";
@@ -48,6 +48,18 @@ namespace Pengin.ColonyTaskAuditor
                 else if(ctx.Skill!=null&&(pawn.skills==null||pawn.skills.GetSkill(ctx.Skill).Level<ctx.MinSkill))status="CTA_WorkerSkill";
                 else if(!pawn.CanReach(ctx.Target!=null?new LocalTargetInfo(ctx.Target):new LocalTargetInfo(ctx.Cell),PathEndMode.Touch,Danger.None))status="CTA_WorkerReach";
                 result.Workers.Add(new WorkerDiagnosis{Pawn=pawn,Status=status});
+            }
+            if(!includeMaterials)return result;
+            if(ctx.Bill!=null&&ctx.Bill.recipe.skillRequirements!=null)
+                foreach(var requirement in ctx.Bill.recipe.skillRequirements)result.Materials.Add("CTA_SkillRequirement".Translate(requirement.skill.LabelCap,requirement.minLevel));
+            if(ctx.Target is Frame||ctx.Target is Blueprint_Build)
+            {
+                var def=ctx.Target.def.entityDefToBuild;
+                if(def!=null)
+                {
+                    result.Materials.Add("CTA_SkillRequirement".Translate(SkillDefOf.Construction.LabelCap,def.constructionSkillPrerequisite));
+                    result.Materials.Add("CTA_SkillRequirement".Translate(SkillDefOf.Artistic.LabelCap,def.artisticSkillPrerequisite));
+                }
             }
             var construction=ctx.Target as IConstructible;
             if(construction!=null)

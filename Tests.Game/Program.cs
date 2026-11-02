@@ -24,13 +24,19 @@ class Program
             record.Clock.Observe(10,5,false,true,100);
             record.Clock.Observe(100,5,false,true,100);
             record.Clock.Notified=true;
+            var watch=new TaskWatchEntry{Info=new WatchInfo{Id="bill:fixture",MapId=7,Threshold=6000,AutoAssist=true}};
+            var settings=new AuditorSettings{RemedyMode=ActionMode.Auto,AssistanceDuration=5000};
             Scribe.saver.InitSaving(path,"fixture");
+            Scribe_Deep.Look(ref watch,"watch");Scribe_Deep.Look(ref settings,"settings");
             record.ExposeData();
             Scribe.saver.FinalizeSaving();
-            record=new AuditRecord();
+            record=new AuditRecord();watch=null;settings=null;
             Scribe.loader.InitLoading(path);
             record.ExposeData();
+            Scribe_Deep.Look(ref watch,"watch");Scribe_Deep.Look(ref settings,"settings");
             Scribe.loader.FinalizeLoading();
+            if(watch.Info.Id!="bill:fixture"||watch.Info.MapId!=7||watch.Info.Threshold!=6000||!watch.Info.AutoAssist||settings.RemedyMode!=ActionMode.Auto||settings.AssistanceDuration!=5000)
+                throw new Exception("Scribe watch/settings round trip failed");
             if(record==null || record.Id!="fixture" || record.Clock.EligibleTicks!=90 || !record.Clock.Notified)
                 throw new Exception("Scribe record round trip failed");
             record.Clock.Observe(110,5,false,true,100);

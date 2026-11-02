@@ -122,6 +122,10 @@ namespace Pengin.ColonyTaskAuditor
         private HashSet<WorkTypeDef> recentWorkTypes = new HashSet<WorkTypeDef>();
         private int pathBudget, ingredientBudget;
         private Dictionary<string,AuditRecord> recordLookup = new Dictionary<string,AuditRecord>();
+        // Scratch collections are not published: reuse backing arrays on 5,000-tick
+        // scans rather than reallocating them on maps with thousands of orders.
+        private readonly Dictionary<string,AuditRecord> scanScratch=new Dictionary<string,AuditRecord>();
+        private readonly HashSet<string> scanSeen=new HashSet<string>();
         private bool needsInitialScan = true;
         private Dictionary<Thing,List<AuditRecord>> targetRecords = new Dictionary<Thing,List<AuditRecord>>();
         private Dictionary<IntVec3,List<AuditRecord>> cellRecords = new Dictionary<IntVec3,List<AuditRecord>>();
@@ -486,8 +490,9 @@ namespace Pengin.ColonyTaskAuditor
                     Thing bench=job.bill.billStack==null?null:job.bill.billStack.billGiver as Thing;
                     if(bench!=null)busyBenches.Add(bench);
                 }
-                foreach (LocalTargetInfo t in new[] {job.targetA, job.targetB, job.targetC})
+                for(int targetIndex=0;targetIndex<3;targetIndex++)
                 {
+                    LocalTargetInfo t=targetIndex==0?job.targetA:targetIndex==1?job.targetB:job.targetC;
                     if (!t.IsValid) continue;
                     List<Job> list;
                     // Thing targets are indexed by identity AND by cell: cell-based orders
@@ -499,7 +504,7 @@ namespace Pengin.ColonyTaskAuditor
             materialStocks=new Dictionary<ThingDef,int>();enabledCache.Clear();availableCache.Clear();
             ingredientBudget=512;
             pathBudget = 64; // Shared across all tasks, never per task.
-            var old = new Dictionary<string, AuditRecord>();
+            var old=scanScratch;old.Clear();
             foreach (AuditRecord r in records)
                 if (r != null && !string.IsNullOrEmpty(r.Id) && !old.ContainsKey(r.Id))
                 {
@@ -513,7 +518,7 @@ namespace Pengin.ColonyTaskAuditor
                 }
             var completeCategories=new HashSet<string>(new[]{"designation","bill","grow","unfinished","gather"});
             var gaps=new Dictionary<string,int>();
-            var seen = new HashSet<string>();
+            var seen=scanSeen;seen.Clear();
             var nextTargets=new Dictionary<Thing,List<AuditRecord>>();
             var nextCells=new Dictionary<IntVec3,List<AuditRecord>>();
             var nextMatchers=new Dictionary<string,Predicate<Job>>();

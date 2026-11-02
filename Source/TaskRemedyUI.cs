@@ -22,7 +22,7 @@ namespace Pengin.ColonyTaskAuditor
         public override void DoWindowContents(Rect rect)
         {
             var audit=map.GetComponent<TaskAuditComponent>();
-            if(TaskAuditorMod.Settings.RemedyMode==ActionMode.Auto&&detailScan!=audit.LastScanTick)
+            if(detailScan!=audit.LastScanTick)
             {detail=TaskDetails.Inspect(audit,id);detailScan=audit.LastScanTick;assistance=null;}
             Rect view=new Rect(rect.x,rect.y,rect.width,rect.height-30);
             Rect content=new Rect(0,0,rect.width-20,System.Math.Max(height,view.height));
@@ -49,6 +49,24 @@ namespace Pengin.ColonyTaskAuditor
         }
         void DrawActions(Listing_Standard list,TaskAuditComponent audit)
         {
+            // Cause-specific guidance only navigates to live objects. Existing
+            // confirmation and scanner proofs still govern every world write.
+            var navigation=TaskRemedyPlanner.NavigationFor(detail.Record.Reason);
+            if(navigation==RemedyNavigation.Materials)
+            {
+                var stock=detail.MaterialTargets.FirstOrDefault(t=>t!=null&&t.Spawned&&t.Map==map);
+                if(stock!=null&&list.ButtonText("CTA_JumpMaterial".Translate(stock.LabelShort)))
+                {CameraJumper.TryJump(stock.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(stock);}
+                var bench=detail.RecipeTargets.FirstOrDefault(t=>t!=null&&t.Spawned&&t.Map==map);
+                if(bench!=null&&list.ButtonText("CTA_JumpRecipeBench".Translate(bench.LabelShort)))
+                {CameraJumper.TryJump(bench.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(bench);}
+            }
+            else if(navigation==RemedyNavigation.Worker)
+            {
+                foreach(var worker in detail.Workers.Where(w=>w.Pawn!=null&&w.Pawn.Spawned&&w.Pawn.Map==map).Take(3))
+                    if(list.ButtonText("CTA_JumpWorker".Translate(worker.Pawn.LabelShort,worker.Status.Translate())))
+                    {CameraJumper.TryJump(worker.Pawn.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(worker.Pawn);}
+            }
             if(detail.Context.Target!=null&&list.ButtonText("CTA_SelectTarget".Translate()))
             {CameraJumper.TryJump(detail.Context.Target.Position,map);Find.Selector.ClearSelection();Find.Selector.Select(detail.Context.Target);}
             if(list.ButtonText("CTA_OpenWorkTable".Translate()))

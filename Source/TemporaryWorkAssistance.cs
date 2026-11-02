@@ -78,7 +78,7 @@ namespace Pengin.ColonyTaskAuditor
             // Only inspect selected important tasks, within a small extra proof budget.
             // Unknown remains advisory unless an exact supported scanner proves the work
             // executable now by a safe idle enabled colonist. No causal guess is published.
-            foreach(var watch in audit.map.GetComponent<TaskActionState>().Watches.Take(4))
+            foreach(var watch in audit.map.GetComponent<TaskActionState>().GetWatchBatch(audit.LastScanTick))
             {
                 var record=audit.FindRecord(watch.Info.Id);
                 if(record==null||record.Reason!="CTA_Unknown"||record.Held)continue;
@@ -100,7 +100,7 @@ namespace Pengin.ColonyTaskAuditor
                 PriorityConflict=PriorityConflict(),HasManualPriority=live.Pawn.mindState.priorityWork.IsPrioritized};
             // Auto additionally requires a persisted confirmed Ready diagnosis. A preview
             // alone can offer Confirm, but cannot promote an unknown cause to Auto.
-            var record=audit.Records.FirstOrDefault(r=>r.Id==shown.TaskId);
+            var record=audit.FindRecord(shown.TaskId);
             var remedy=TaskRemedyPlanner.Plan(automatic?(record==null?"CTA_Unknown":record.Reason):"CTA_Ready",
                 !automatic||(record!=null&&record.Confidence=="CTA_Confirmed"),audit.PartialScan,record==null,record!=null&&record.Held,live.Ready);
             if(!remedy.CanExecute||(automatic&&!remedy.CanAutomate))return false;

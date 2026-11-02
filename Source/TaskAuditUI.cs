@@ -47,9 +47,11 @@ namespace Pengin.ColonyTaskAuditor
             const float row=108f;
             Rect content = new Rect(0, 0, Math.Max(100f, viewport.width - 20), Math.Max(viewport.height, cache.Count * row));
             Widgets.BeginScrollView(viewport, ref scroll, content);
-            for (int i = 0; i < cache.Count; i++)
+            // Only draw the visible window, not every off-screen record.
+            int first=Math.Max(0,(int)(scroll.y/row)-1);
+            int last=Math.Min(cache.Count,(int)((scroll.y+viewport.height)/row)+2);
+            for (int i = first; i < last; i++)
             {
-                if(i*row+row<scroll.y||i*row>scroll.y+viewport.height)continue;
                 AuditRecord item = cache[i];
                 bool overdue = item.Clock.ReachedThreshold(audit.Threshold(item));
                 Widgets.Label(new Rect(0, i * row, content.width - 80f, row-3),

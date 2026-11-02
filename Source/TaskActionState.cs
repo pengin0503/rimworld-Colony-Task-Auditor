@@ -17,6 +17,25 @@ namespace Pengin.ColonyTaskAuditor
     {
         public List<TaskWatchEntry> Watches=new List<TaskWatchEntry>();
         public int Revision;
+        // Persist the next watch for fair bounded readiness checks.
+        public int WatchCursor;
+        int batchScan=-1;
+        int batchRevision=-1;
+        readonly List<TaskWatchEntry> watchBatch=new List<TaskWatchEntry>();
+        public IReadOnlyList<TaskWatchEntry> GetWatchBatch(int scanTick)
+        {
+            if(scanTick!=batchScan||Revision!=batchRevision)
+            {
+                watchBatch.Clear();
+                int[] indices=TaskWatchlist.BatchIndices(Watches.Count,WatchCursor,4);
+                foreach(int index in indices)
+                    if(Watches[index]!=null&&Watches[index].Info!=null)watchBatch.Add(Watches[index]);
+                if(Watches.Count>0)WatchCursor=(WatchCursor+indices.Length)%Watches.Count;
+                else WatchCursor=0;
+                batchScan=scanTick;batchRevision=Revision;
+            }
+            return watchBatch;
+        }
         int indexedRevision=-1;
         readonly Dictionary<string,WatchInfo> watchIndex=new Dictionary<string,WatchInfo>();
         public List<ActiveTaskAssistance> Active=new List<ActiveTaskAssistance>();
@@ -60,7 +79,7 @@ namespace Pengin.ColonyTaskAuditor
             bool newScan=autoScan!=audit.LastScanTick;autoScan=audit.LastScanTick;
             if(settings.AssistanceMode!=ActionMode.Auto||!newScan||audit.PartialScan||!TemporaryWorkPolicy.FreshScan(now,audit.LastScanTick))return;
             if(TemporaryWorkAssistance.PriorityConflict()||(long)now-LastAction<settings.Cooldown)return;
-            foreach(var watch in Watches.Where(w=>w.Info.AutoAssist).Take(4))
+            foreach(var watch in GetWatchBatch(audit.LastScanTick).Where(w=>w.Info.AutoAssist))
             {
                 var record=audit.FindRecord(watch.Info.Id);
                 if(record==null||record.Reason!="CTA_Ready"||record.Confidence!="CTA_Confirmed")continue;
@@ -100,6 +119,7 @@ namespace Pengin.ColonyTaskAuditor
             base.ExposeData();
             Scribe_Collections.Look(ref Active,"activeTaskAssistance",LookMode.Deep);Scribe_Collections.Look(ref History,"taskActionHistory",LookMode.Value);
             Scribe_Values.Look(ref LastAction,"lastTaskAction",-600000);
+            Scribe_Values.Look(ref WatchCursor,"watchCursor",0);
             if(Active==null)Active=new List<ActiveTaskAssistance>();if(History==null)History=new List<string>();
             Scribe_Collections.Look(ref Watches,"taskWatchlist",LookMode.Deep);
             if(Watches==null)Watches=new List<TaskWatchEntry>();Revision++;

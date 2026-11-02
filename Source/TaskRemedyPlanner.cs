@@ -1,6 +1,7 @@
 namespace Pengin.ColonyTaskAuditor
 {
     public enum ActionMode { Off, Confirm, Auto }
+    public enum RemedyNavigation { None, Materials, Worker, Target }
     public sealed class TaskRemedy
     {
         public string Hint;
@@ -8,6 +9,21 @@ namespace Pengin.ColonyTaskAuditor
     }
     public static class TaskRemedyPlanner
     {
+        // Navigation is deliberately read-only: it never changes a work policy,
+        // forbidden flag, priority or job. UI must verify targets are still valid.
+        public static RemedyNavigation NavigationFor(string reason)
+        {
+            switch(reason)
+            {
+                case "CTA_MaterialMissing":case "CTA_BillMaterials":case "CTA_MaterialDelivery":
+                    return RemedyNavigation.Materials;
+                case "CTA_NoWorker":case "CTA_NoWorkersOnMap":case "CTA_Skill":
+                case "CTA_BillRestriction":return RemedyNavigation.Worker;
+                case "CTA_Unreachable":case "CTA_Reserved":case "CTA_Forbidden":
+                case "CTA_Paused":case "CTA_SowBlocked":return RemedyNavigation.Target;
+                default:return RemedyNavigation.None;
+            }
+        }
         // A live scanner proof is a fact about this exact task/worker; a likely cause alone
         // never authorizes a write. Pauses, normal queues and partial scans always win.
         public static TaskRemedy Plan(string reason,bool confirmed,bool partial,bool gone,bool held,bool verifiedJob)

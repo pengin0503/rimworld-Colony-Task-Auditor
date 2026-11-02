@@ -717,7 +717,7 @@ namespace Pengin.ColonyTaskAuditor
             {
                 TemporaryWorkAssistance.PublishReadyFacts(this);
                 int ready=0;
-                foreach(var watch in map.GetComponent<TaskActionState>().Watches.Take(4))
+                foreach(var watch in map.GetComponent<TaskActionState>().GetWatchBatch(LastScanTick))
                 {
                     var record=FindRecord(watch.Info.Id);
                     if(record!=null&&record.Reason=="CTA_Ready"&&!record.Clock.Notified&&settings.Notifications)

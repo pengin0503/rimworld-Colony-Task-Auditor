@@ -1,0 +1,75 @@
+name: Publish Colony Task Auditor v1.1.0 (one-time)
+on:
+  push:
+    branches:
+      - release/trigger-v1.1.0
+    paths:
+      - .github/workflows/publish-v1.1.0.yml
+permissions:
+  contents: write
+concurrency:
+  group: publish-v1.1.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out validated main (not the trigger commit)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify release target and absence of existing tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "main"
+          grep -q '<modVersion>1.1.0</modVersion>' About/About.xml
+          if gh release view v1.1.0 >/dev/null 2>&1; then echo 'v1.1.0 release already exists'; exit 1; fi
+          if git ls-remote --exit-code --tags origin refs/tags/v1.1.0 >/dev/null 2>&1; then echo 'v1.1.0 tag already exists'; exit 1; fi
+          echo "Release target: $(git rev-parse HEAD)"
+      - name: Validate mod metadata and translations
+        run: python3 tools/validate_package.py
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Regression tests
+        run: dotnet run --project Tests/Tests.csproj -c Release
+      - name: Compile release DLL against public references
+        run: |
+          dotnet restore Source/ColonyTaskAuditor.csproj
+          dotnet build Source/ColonyTaskAuditor.csproj -c Release --no-restore
+      - name: Compile game fixtures (compile-only)
+        run: dotnet build Tests.Game/Tests.Game.csproj -c Release
+      - name: Package and validate ZIP
+        env:
+          MOD: ColonyTaskAuditor
+        run: |
+          set -euo pipefail
+          python3 tools/package_dev.py
+          mv "dist/$MOD-development.zip" "dist/$MOD-v1.1.0.zip"
+          python3 - <<'PY'
+          import os, zipfile
+          from pathlib import Path
+          mod = os.environ['MOD']
+          archive = Path('dist') / (mod + '-v1.1.0.zip')
+          with zipfile.ZipFile(archive) as f:
+              names = f.namelist()
+              assert (mod + '/1.7/Assemblies/' + mod + '.dll') in names
+              assert (mod + '/About/About.xml') in names
+              assert not any(part in name for name in names for part in ('Assembly-CSharp', 'Waylith', 'UnityStubs', '0Harmony'))
+          notes = Path('docs/RELEASE_NOTES.md').read_text(encoding='utf-8').split('\n---\n', 1)[0]
+          assert 'v1.1.0' in notes and '未検証' in notes
+          Path('dist/v1.1.0-notes.md').write_text(notes + '\n', encoding='utf-8')
+          PY
+          sha256sum "dist/$MOD-v1.1.0.zip"
+      - name: Publish v1.1.0 Release with ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MOD: ColonyTaskAuditor
+        run: |
+          set -euo pipefail
+          gh release create v1.1.0 "dist/$MOD-v1.1.0.zip" \
+            --target "$(git rev-parse HEAD)" \
+            --title "Colony Task Auditor v1.1.0" --notes-file dist/v1.1.0-notes.md --latest

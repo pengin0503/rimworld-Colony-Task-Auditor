@@ -127,4 +127,6 @@
   <CTA_JumpWorker>作業者を選択：{0}（{1}）</CTA_JumpWorker>
   <CTA_ResumePausedBill>停止中の製造指示を再開（確認が必要）</CTA_ResumePausedBill>
   <CTA_ResumeBillConfirm>手動で停止した製造指示を再開しますか？製造指示の停止状態のみ変更します。作業者への強制指示や作業優先度の変更は行いません。</CTA_ResumeBillConfirm>
+  <CTA_UnforbidTarget>この対象の禁止を解除：{0}</CTA_UnforbidTarget>
+  <CTA_UnforbidConfirm>{0}の作業禁止を解除しますか？この対象だけを変更し、作業優先度やJobは変更しません。</CTA_UnforbidConfirm>
 </LanguageData>

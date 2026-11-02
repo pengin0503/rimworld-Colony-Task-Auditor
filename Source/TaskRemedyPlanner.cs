@@ -24,6 +24,10 @@ namespace Pengin.ColonyTaskAuditor
                 default:return RemedyNavigation.None;
             }
         }
+        // A paused bill is an intentional player decision. It may be resumed
+        // only by an explicit, current confirmation; never by Auto.
+        public static bool CanResumePausedBill(string reason,bool verified,bool partial,bool suspended,bool approved)
+        {return approved&&verified&&!partial&&suspended&&reason=="CTA_Paused";}
         // A live scanner proof is a fact about this exact task/worker; a likely cause alone
         // never authorizes a write. Pauses, normal queues and partial scans always win.
         public static TaskRemedy Plan(string reason,bool confirmed,bool partial,bool gone,bool held,bool verifiedJob)

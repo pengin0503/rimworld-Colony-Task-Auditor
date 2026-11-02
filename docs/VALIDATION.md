@@ -170,3 +170,9 @@ Review follow-up (PR #23):
 - Task detail lookup uses the existing ID index; material stock counts use one bounded pass; list UI draws only visible rows.
 - Public CI success: 18 remedy scenarios, 10 watchlist scenarios, 18 temporary-work safety scenarios, 29 progress assertions; Release source and game-fixture **compile only**, metadata/translation/package checks. Example run: https://github.com/pengin0503/rimworld-Colony-Task-Auditor/actions/runs/41384559159
 - **Not verified:** native UI interaction, full map Scribe load, PriorityWork runtime hooks, TPS/GC before-after and 270+ MODs. Keep #7 and #30 for real performance acceptance. #28 untouched.
+
+## Cause-specific confirmed bill resume (2026-11-02)
+- A suspended production bill with current paused diagnosis can be resumed only from the remedy UI by an explicit confirmation. The callback reruns the audit and checks the same Bill instance, status, current map, and non-partial scan immediately before clearing `suspended`.
+- The pure model's five safety cases were observed RED→GREEN in GitHub Actions; includes refusal without player confirmation, wrong reason or incomplete audit.
+- No automatic bill resume, no PriorityWork API calls, no forced Job and no changes to the reserved #28 ownership logic.
+- Actual game UI interaction and full save/load still require #7 acceptance. CI compile does not prove gameplay.

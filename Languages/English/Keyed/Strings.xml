@@ -116,4 +116,7 @@
   <CTA_OpenWorkTable>Open work assignment table</CTA_OpenWorkTable>
   <CTA_SkillRequirement>Required skill: {0} ≥ {1}</CTA_SkillRequirement>
   <CTA_PriorityHookUnavailable>Priority observation is unavailable: support is disabled to protect identical manual requests.</CTA_PriorityHookUnavailable>
+  <CTA_JumpMaterial>Locate stored material: {0}</CTA_JumpMaterial>
+  <CTA_JumpRecipeBench>Locate production bench: {0}</CTA_JumpRecipeBench>
+  <CTA_JumpWorker>Select possible worker: {0} ({1})</CTA_JumpWorker>
 </LanguageData>

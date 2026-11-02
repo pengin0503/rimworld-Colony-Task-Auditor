@@ -22,7 +22,7 @@ namespace Pengin.ColonyTaskAuditor
         public static TaskDetails Inspect(TaskAuditComponent audit,string id,bool includeMaterials=true,int workerLimit=64)
         {
             var result=new TaskDetails();TaskContext ctx;
-            var r=audit.Records.FirstOrDefault(x=>x.Id==id);result.Record=r;
+            var r=audit.FindRecord(id);result.Record=r;
             if(r==null||r.LastSeen!=audit.LastScanTick||!audit.Contexts.TryGetValue(id,out ctx))return result;
             result.Context=ctx;var map=audit.map;
             if(ctx.Target!=null&&(!ctx.Target.Spawned||ctx.Target.Map!=map))return result;

@@ -17,6 +17,8 @@ namespace Pengin.ColonyTaskAuditor
         public WorkTypeDef Work;
         public List<WorkerDiagnosis> Workers=new List<WorkerDiagnosis>();
         public List<string> Materials=new List<string>(),Recipes=new List<string>();
+        public List<Thing> MaterialTargets=new List<Thing>();
+        public List<Building_WorkTable> RecipeTargets=new List<Building_WorkTable>();
         public bool Current;
         internal TaskContext Context;
         public static TaskDetails Inspect(TaskAuditComponent audit,string id,bool includeMaterials=true,int workerLimit=64)
@@ -84,9 +86,18 @@ namespace Pengin.ColonyTaskAuditor
         }
         static void AddMaterial(TaskDetails result,Map map,ThingDef def,int needed)
         {
-            var stacks=map.listerThings.ThingsOfDef(def).Take(12000).ToList();
-            int permitted=stacks.Where(t=>!t.IsForbidden(Faction.OfPlayer)).Sum(t=>t.stackCount);
-            int forbidden=stacks.Where(t=>t.IsForbidden(Faction.OfPlayer)).Sum(t=>t.stackCount);
+            int permitted=0,forbidden=0,scanned=0;
+            foreach(var thing in map.listerThings.ThingsOfDef(def))
+            {
+                if(++scanned>12000)break;
+                if(thing.IsForbidden(Faction.OfPlayer))forbidden+=thing.stackCount;
+                else
+                {
+                    permitted+=thing.stackCount;
+                    if(result.MaterialTargets.Count<8&&!result.MaterialTargets.Contains(thing))
+                        result.MaterialTargets.Add(thing);
+                }
+            }
             result.Materials.Add("CTA_MaterialDetail".Translate(def.LabelCap,needed,permitted,forbidden));
             if(needed<=permitted||result.Recipes.Count>=8)return;
             foreach(var bench in map.listerBuildings.allBuildingsColonist.OfType<Building_WorkTable>().Take(32))
@@ -94,6 +105,7 @@ namespace Pengin.ColonyTaskAuditor
                 {
                     if(result.Recipes.Count>=8)return;
                     result.Recipes.Add(bench.LabelShort+" / "+recipe.LabelCap);
+                    if(!result.RecipeTargets.Contains(bench))result.RecipeTargets.Add(bench);
                 }
         }
     }

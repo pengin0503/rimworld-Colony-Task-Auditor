@@ -1,16 +1,44 @@
-# Unreleased (development)
+# Colony Task Auditor v1.1.0 — RimWorld 1.7
 
-- Fixed (#28): a priority order ended by vanilla itself (timeout, no more prioritized work, pawn state reset, draft, target removed) no longer withdraws the task's Auto permission. Player, other-mod or unidentified changes still release the request and withdraw it; the reason is shown in the action history. / バニラによる優先作業の自然終了でAuto許可を失わないよう修正。プレイヤー・他MOD・判別不能な変更は従来どおり解除して許可を取り消し、理由を履歴に表示。
-- In-game acceptance remains under #7.
+## 日本語
 
-# 1.1.0 actionable automation (development)
+**新機能**
+- 原因別の解決案、材料の在庫・製造台・作業者診断と対応する対象への直接移動。
+- 意図的に停止した製造指示の再開と、確認済みの禁止対象1件の解除。どちらも操作直前の再スキャンとプレイヤーの確認を必要とし、無断変更はしない。
+- 重要作業の登録、個別警告閾値・絞り込み、最大4件ずつの公平な巡回監視。
+- 対象別に許可する期限付きのバニラ優先依頼。デフォルトは確認付きで、自動モードは明示許可制。作業表の数値変更やJob強制発行は行わない。
 
-- Cause-specific remedies, material/worker diagnostics and settings navigation.
-- Map-scoped important tasks with individual thresholds and filtering.
-- Bounded native priority requests with fresh execution proof, target permission, cooldown, caps and manual-write protection. No forced jobs or work-table rewrites.
-- 原因別対策、重要監視、確認付き一時支援、機能別の自動許可、日英UIを追加。
-- Runtime gameplay, Harmony execution and full save-load acceptance remain unverified; see VALIDATION.md.
+**修正・改善**
+- PriorityWorkのバニラによる自然終了と、プレイヤー・他MODの書き込みを区別。手動指示を優先し、不確かな場合は自動支援を停止。
+- 重要作業が5件以上あっても後続の監視が飢餓しないよう修正。支援OFF時も監視側の警告閾値を保持。
+- 確認付きモードの診断詳細を最新スキャンに追従させ、画面外行の描画を省略。
+- スキャンの一時辞書・集合の再利用、毎Jobの配列生成・重複材料集計・不要な再ソートを削減。進捗の保存と検出結果を維持。
 
+**検証範囲**
+- 公開GitHub Actionsでモデル・回帰テスト、Releaseビルド、翻訳・配布構成を検証。
+- 1.1.0の新機能の通常ゲーム操作、Harmonyの実動作、完全なセーブ・ロード、270以上のMODでの互換性、ゲームTPS/GCの比較は未検証。
+
+## English
+
+**Added**
+- Cause-specific remedies with materials, available benches, worker diagnostics and navigation to relevant live targets.
+- Explicitly confirmed resumption of a paused bill and unforbidding of one verified target only, with fresh scans immediately before each change.
+- Important-task watches with individual warning thresholds, filters and bounded fair rotation across registrations.
+- Separately authorized, time-limited native priority requests. Confirmation is the default; Auto is opt-in per watched target. No forced jobs or permanent work-table priority changes.
+
+**Fixed and improved**
+- Distinguished vanilla PriorityWork natural completion from manual and other-mod writes; ambiguous changes stop automation.
+- Prevented watches beyond the first four from starving; watch alerts continue when assistance is Off.
+- Refreshed confirmation-mode details on new scans and drew only visible rows.
+- Reused scan scratch collections, avoided per-job target arrays, and reduced duplicate material counting and unnecessary sorting.
+
+**Verification**
+- Public GitHub Actions regression tests, Release compilation, translation and package validation passed.
+- Normal in-game 1.1.0 behavior, runtime Harmony interaction, full save/reload, 270+ mod compatibility and actual TPS/GC improvement are **not verified**.
+
+**Dependency:** Harmony (`brrainz.harmony`) must load first.
+
+---
 Colony Task Auditor v1.0.1 for RimWorld 1.7 (built against 1.7.4985). Requires [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) (`brrainz.harmony`).
 
 ## 日本語

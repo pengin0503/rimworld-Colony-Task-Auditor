@@ -7,9 +7,9 @@
     <li>1.7</li>
   </supportedVersions>
   <modVersion>1.1.0</modVersion>
-  <description>Monitors construction, mining, deconstruction, production bills, sowing/harvesting, unfinished products and milking/shearing, and diagnoses why tasks stall (workers, skills, materials, forbidden, reservations, reachability) with an explicit confidence level. Stalled tasks are shown in an alert and a list window. Diagnosis only: it never forces jobs, deletes orders or changes settings. Requires Harmony.
+  <description>RimWorld 1.7 stalled-work diagnostics for construction, mining, production, farming and animal gathering. Explains material, worker, access and reservation blockers with confidence levels; offers cause-specific navigation, individually confirmed bill resume and target unforbid, watched high-priority tasks and optional bounded temporary vanilla priority requests. It never forces a job or changes work-table values. Requires Harmony. New 1.1.0 gameplay behavior has not been verified in normal play.
 
-建築・採掘・解体、製造指示、播種・収穫、未完成品、搾乳・毛刈りを監視し、作業が止まっている原因（作業者・スキル・材料・禁止・予約・到達性）を確信度付きで診断します。停滞はアラートと一覧ウィンドウで確認できます。診断専用で、作業の強制・指示の削除・設定の変更は行いません。Harmonyが必要です。</description>
+RimWorld 1.7向けの停滞作業診断MODです。建築・採掘・製造・農作業・家畜資源の作業を監視し、材料・作業者・到達性・予約などの原因を確信度付きで表示します。原因別の対象移動、確認付きの製造指示再開や個別禁止解除、重要作業の監視と任意の期限付き優先依頼に対応します。Jobを強制発行せず、作業表の数値も変更しません。Harmonyが必要です。1.1.0の新機能は通常プレイでは未検証です。</description>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>

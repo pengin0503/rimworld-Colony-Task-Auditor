@@ -160,3 +160,13 @@ Review follow-up (PR #23):
 - Inline whole-branch review used per instruction to avoid subagents.
 - Unverified: actual Harmony patch execution, in-game priority scheduling/expiry, normal UI interactions, whole-map Scribe reference resolution and install/removal, Work Tab/WorkRoles and 270+ MOD compatibility, TPS/GC comparison. Earlier user play validation covers earlier features, not these additions.
 - No private game files or credentials included in CI or packages.
+
+
+## Review remediation (2026-11-02, branch: feat/remaining-review-fixes-20261102)
+- Scope: #25, #26, #27, #29 and low-risk portions of #30. #28 intentionally excluded.
+- Registered watched tasks are now selected through a persisted round-robin cursor (at most four per scan; original proof budget 64 maintained). Proof, notification and Auto all share the same scan batch.
+- AssistanceMode=Off no longer removes important-watch alert thresholds; Confirm remedy details update on newer audit snapshots without invoking full scan per UI frame.
+- Cause-specific UI navigation selects a real stock item/recipe bench/possible worker if still spawned on the map; it does not change Job priorities or forbidden flags.
+- Task detail lookup uses the existing ID index; material stock counts use one bounded pass; list UI draws only visible rows.
+- Public CI success: 18 remedy scenarios, 10 watchlist scenarios, 18 temporary-work safety scenarios, 29 progress assertions; Release source and game-fixture **compile only**, metadata/translation/package checks. Example run: https://github.com/pengin0503/rimworld-Colony-Task-Auditor/actions/runs/41384559159
+- **Not verified:** native UI interaction, full map Scribe load, PriorityWork runtime hooks, TPS/GC before-after and 270+ MODs. Keep #7 and #30 for real performance acceptance. #28 untouched.
